@@ -1,0 +1,34 @@
+const KEY='bebop-reader-state-v1';
+const defaults={
+  mastery:{}, attempts:{}, streak:0,lastPracticeDate:null,totalAttempts:0,
+  settings:{solfege:true, preferredBpm:72, latencyMs:0},
+  session:[],sessionIndex:0,lastResult:null
+};
+export function loadState(){
+  try { return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}'), settings:{...defaults.settings,...(JSON.parse(localStorage.getItem(KEY)||'{}').settings||{})}}; }
+  catch { return structuredClone(defaults); }
+}
+export function saveState(s){localStorage.setItem(KEY,JSON.stringify(s));}
+export function mutate(fn){const s=loadState();fn(s);saveState(s);return s;}
+export function masteryOf(id){return loadState().mastery[id]||0;}
+export function recordAttempt(exercise,result){
+  return mutate(s=>{
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    if(s.lastPracticeDate!==today){
+      if(s.lastPracticeDate){const d=(new Date(today)-new Date(s.lastPracticeDate))/86400000;s.streak=d===1?s.streak+1:1;} else s.streak=1;
+      s.lastPracticeDate=today;
+    }
+    s.totalAttempts=(s.totalAttempts||0)+1;
+    s.attempts[exercise.id]=(s.attempts[exercise.id]||0)+1;
+    if(result.mode==='mic'){
+      const avg=(result.pitch+result.time+result.flow)/3;
+      let m=s.mastery[exercise.id]||0;
+      if(avg>=92)m=Math.min(5,m+1);
+      else if(avg>=exercise.masteryThreshold && m<4)m=Math.min(5,m+0.5);
+      s.mastery[exercise.id]=m;
+    }
+    s.lastResult={...result,exerciseId:exercise.id,at:Date.now()};
+  });
+}
+export function setSettings(patch){return mutate(s=>Object.assign(s.settings,patch));}
+export function cMastery(){const s=loadState();const vals=Object.values(s.mastery);return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/(5*28)*100):0;}
