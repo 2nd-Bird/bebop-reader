@@ -28,7 +28,8 @@ export function scoreAttempt(ex,samples,latencyMs=0){
 
     const cents=pitchWindow.map(s=>Math.abs(centsFromMidi(freqToMidi(s.hz),n.midi)));
     const med=median(cents);
-    const readOk=med!==null&&med<=70;
+    // Reading score is deliberately tolerant of vocal tuning: a clearly intended scale degree counts.
+    const readOk=med!==null&&med<=85;
     const pitchScore=med==null?0:clamp(100-Math.max(0,med-20)*.95);
 
     const onsetCandidates=samples.filter(s=>s.t>=start-.05&&s.t<=Math.min(end,start+.38)&&s.hz&&s.rms>=.003&&s.clarity>=.25);
