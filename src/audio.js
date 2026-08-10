@@ -6,10 +6,11 @@ export async function ensureAudio(){
   const state=Tone.getContext().state;
   if(state!=='running')throw new Error('音声エンジンを開始できません。もう一度タップしてください');
   if(!synth){
-    synth=new Tone.PolySynth(Tone.Synth,{maxPolyphony:4,options:{
+    synth=new Tone.PolySynth(Tone.Synth,{
       oscillator:{type:'sine'},
       envelope:{attack:.008,decay:.06,sustain:.72,release:.12}
-    }}).toDestination();
+    }).toDestination();
+    synth.maxPolyphony=4;
     synth.volume.value=-4;
   }
   if(!click){
