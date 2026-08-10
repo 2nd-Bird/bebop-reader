@@ -14,9 +14,11 @@ export function updateFollower(score,viewport,playhead,ex,progress,{autoScroll=t
   const x=playheadX(score,ex,progress);
   const maxScroll=Math.max(0,score.scrollWidth-viewport.clientWidth);
   if(autoScroll&&maxScroll>2){
-    const anchor=viewport.clientWidth*.38;
-    const target=clamp(x-anchor,0,maxScroll);
-    viewport.scrollLeft=target;
+    const local=x-viewport.scrollLeft,w=viewport.clientWidth;
+    if(local>w*.74||local<w*.12){
+      const target=clamp(x-w*.38,0,maxScroll);
+      viewport.scrollLeft=target;
+    }
   }
   playhead.style.left=`${x-viewport.scrollLeft}px`;
   return x;
