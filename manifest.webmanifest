@@ -1,0 +1,14 @@
+{
+  "name": "Bebop Reader",
+  "short_name": "Bebop",
+  "description": "ジャズの読譜・視唱・ビバップ語彙を育てるトレーニングPWA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#091018",
+  "theme_color": "#091018",
+  "orientation": "portrait-primary",
+  "icons": [
+    {"src":"./assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
