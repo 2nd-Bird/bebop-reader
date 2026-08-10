@@ -1,4 +1,4 @@
-import {centsBetween} from './pitchDetector.js';
+import {centsBetween,freqToMidi} from './pitchDetector.js';
 const median=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);const m=Math.floor(b.length/2);return b.length%2?b[m]:(b[m-1]+b[m])/2;};
 const clamp=(n,a=0,b=100)=>Math.max(a,Math.min(b,n));
 export function scoreAttempt(ex,samples,latencyMs=0){
@@ -26,11 +26,12 @@ export function scoreAttempt(ex,samples,latencyMs=0){
   const flow=Math.round(clamp(avg('voicedRatio')*108));
   const overall=Math.round((pitch+time+flow)/3);
   let coaching='譜面から音を先に聴いて、そのまま流れに乗ろう。';
-  if(totalPitched===0&&maxRms<0.0045) coaching='マイク許可はありますが、歌声の信号がほぼ届いていません。もう一度歌って入力を確認します。';
-  else if(totalPitched===0) coaching='歌声はマイクに入っています。音高検出をもう一度合わせます。少し長めにはっきり母音で歌ってみよう。';
+  if(totalPitched===0&&maxRms<0.0045) coaching='歌声の軌跡を十分に拾えませんでした。設定のマイクテストで入力を確認できます。';
+  else if(totalPitched===0) coaching='歌声は入っています。少し長めにはっきり母音で歌って、音程の軌跡を作ろう。';
   else if(overall>=94) coaching='Perfect Phrase。目と耳とタイムがひとつになっています。';
   else if(pitch<time-10) coaching='タイムは保てています。音程を先に内側で鳴らしてから入ろう。';
   else if(time<pitch-10) coaching='音は取れています。次は拍の前進を切らさない。';
   else if(flow<75) coaching='音を一つずつ当てにいかず、フレーズ全体を一息で運ぼう。';
-  return {mode:'mic',pitch,time,flow,overall,notes,coaching,sampleCount:samples.length,pitchedFrameCount:totalPitched,maxRms};
+  const trace=samples.filter(s=>s.hz&&s.rms>=0.003&&s.clarity>=0.25).map(s=>({t:Number(s.t.toFixed(3)),midi:Number(freqToMidi(s.hz).toFixed(2))}));
+  return {mode:'mic',pitch,time,flow,overall,notes,coaching,sampleCount:samples.length,pitchedFrameCount:totalPitched,maxRms,trace};
 }
