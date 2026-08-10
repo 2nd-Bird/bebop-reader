@@ -22,10 +22,10 @@ export function recordAttempt(exercise,result){
     s.totalAttempts=(s.totalAttempts||0)+1;
     s.attempts[exercise.id]=(s.attempts[exercise.id]||0)+1;
     if(result.mode==='mic'){
-      const avg=(result.pitch+result.time+result.flow)/3;
       let m=s.mastery[exercise.id]||0;
-      if(avg>=92)m=Math.min(5,m+1);
-      else if(avg>=exercise.masteryThreshold && m<4)m=Math.min(5,m+0.5);
+      if(result.stars>=5)m=Math.min(5,m+1);
+      else if(result.stars===4)m=Math.min(5,m+.75);
+      else if(result.stars===3)m=Math.min(5,m+.25);
       s.mastery[exercise.id]=m;
     }
     s.lastResult={...result,exerciseId:exercise.id,at:Date.now()};
