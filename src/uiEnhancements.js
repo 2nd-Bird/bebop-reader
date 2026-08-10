@@ -1,6 +1,6 @@
 import {findExercise} from './exercises.js';
 import {loadState} from './storage.js';
-import {demoPhrase} from './audio.js';
+import {demoPhrase,primeAudio} from './audio.js';
 import {playheadPercent,renderNotation} from './notation.js';
 import {renderPitchGuide} from './pitchGuide.js';
 
@@ -11,8 +11,13 @@ function toast(text){let t=$('.toast-v3');if(!t){t=document.createElement('div')
 
 function enhancePractice(){
   const ex=currentExercise(),btn=$('#listen'),ph=$('#playhead'),score=$('#score'),state=$('#state'),sing=$('#sing');
-  if(!ex||!btn||!ph||!score||btn.dataset.v4==='1')return;
-  btn.dataset.v4='1';
+  if(!ex||!btn||!ph||!score||btn.dataset.v5==='1')return;
+  btn.dataset.v5='1';
+
+  // iOS Safari only guarantees Web Audio unlock inside the direct user gesture.
+  btn.onpointerdown=()=>primeAudio();
+  if(sing)sing.onpointerdown=()=>primeAudio();
+
   btn.onclick=async()=>{
     if(btn.disabled)return;
     btn.disabled=true;if(sing)sing.disabled=true;
