@@ -1,11 +1,12 @@
-const KEY='bebop-reader-state-v1';
+import { EXERCISES } from './exercises.js';
+const KEY='bebop-reader-state-v2';
 const defaults={
   mastery:{}, attempts:{}, streak:0,lastPracticeDate:null,totalAttempts:0,
-  settings:{solfege:true, preferredBpm:72, latencyMs:0},
+  settings:{solfege:false, preferredBpm:72, latencyMs:0},
   session:[],sessionIndex:0,lastResult:null
 };
 export function loadState(){
-  try { return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}'), settings:{...defaults.settings,...(JSON.parse(localStorage.getItem(KEY)||'{}').settings||{})}}; }
+  try { const raw=JSON.parse(localStorage.getItem(KEY)||'{}');return {...defaults,...raw,settings:{...defaults.settings,...(raw.settings||{})}}; }
   catch { return structuredClone(defaults); }
 }
 export function saveState(s){localStorage.setItem(KEY,JSON.stringify(s));}
@@ -31,4 +32,5 @@ export function recordAttempt(exercise,result){
   });
 }
 export function setSettings(patch){return mutate(s=>Object.assign(s.settings,patch));}
-export function cMastery(){const s=loadState();const vals=Object.values(s.mastery);return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/(5*28)*100):0;}
+export function cMastery(){const s=loadState();return EXERCISES.length?Math.round(EXERCISES.reduce((a,e)=>a+(s.mastery[e.id]||0),0)/(5*EXERCISES.length)*100):0;}
+export const storageKey=KEY;
