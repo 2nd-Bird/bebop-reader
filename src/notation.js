@@ -1,5 +1,6 @@
 const DUR = d => d===.5?'8':d===1?'q':d===2?'h':d===4?'w':'q';
 const vexKey = p => p ? `${p[0].toLowerCase()}${p.includes('#')?'#':p.includes('b')?'b':''}/${p.match(/\d+/)?.[0]||4}` : 'b/4';
+const clamp=(n,a=0,b=100)=>Math.max(a,Math.min(b,n));
 export function renderNotation(container,ex,{resultNotes=null,showTime=true}={}){
   container.innerHTML=''; if(!window.VexFlow){container.innerHTML='<div class="score-error">譜面エンジンを読み込めません</div>';return;}
   const VF=window.VexFlow; const W=720,H=190; const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);renderer.resize(W,H);const ctx=renderer.getContext();
@@ -11,5 +12,21 @@ export function renderNotation(container,ex,{resultNotes=null,showTime=true}={})
   });
   const voice=new VF.Voice({num_beats:ex.totalBeats,beat_value:4}).setStrict(false);voice.addTickables(vnotes);
   new VF.Formatter().joinVoices([voice]).format([voice],W-120);voice.draw(ctx,stave);
+  const points=vnotes.map((v,i)=>({beat:ex.notes[i].startBeat,duration:ex.notes[i].duration,rest:ex.notes[i].rest,x:clamp((typeof v.getAbsoluteX==='function'?v.getAbsoluteX():80+i*80)/W*100,4,96)}));
+  const lastPoint=points[points.length-1];
+  const endX=clamp((lastPoint?.x||90)+Math.max(2,Math.min(7,(lastPoint?.duration||1)*2.5)),4,97);
+  container.dataset.timeline=JSON.stringify({points,endX});
   const svg=container.querySelector('svg');if(svg){svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width','100%');svg.removeAttribute('height');svg.style.height='auto';svg.style.display='block';}
+}
+export function playheadPercent(container,ex,progress){
+  let timeline=null;try{timeline=JSON.parse(container?.dataset?.timeline||'null');}catch{}
+  const points=timeline?.points||[];if(!points.length)return 14+clamp(progress)*78;
+  const p=clamp(progress,0,1),beat=p*ex.totalBeats;
+  if(beat<=points[0].beat)return points[0].x;
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i],b=points[i+1];
+    if(beat>=a.beat&&beat<b.beat){const span=Math.max(.001,b.beat-a.beat),t=(beat-a.beat)/span;return a.x+(b.x-a.x)*t;}
+  }
+  const last=points[points.length-1],span=Math.max(.001,ex.totalBeats-last.beat),t=clamp((beat-last.beat)/span);
+  return last.x+((timeline.endX||96)-last.x)*t;
 }
