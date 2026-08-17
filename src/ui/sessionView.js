@@ -13,6 +13,13 @@ const phaseCopy = {
 const morphCopy={INSERT:'間を埋める',EXTEND:'少し伸びる',CHANGE:'少し変わる',DENSIFY:'少し細かく'};
 const starsHTML = n => `<div class="star-row" aria-label="${n} of 5 stars">${[1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}">★</span>`).join('')}</div>`;
 
+function applyScoreVisibility(score,event,scoreModel,rendered){
+  if(event?.scoreVisibility!=='PARTIAL'||!rendered?.geometry)return;
+  const visibleBeats=Math.max(0,Math.min(scoreModel.totalBeats,Number(event.visibleBeats)||scoreModel.totalBeats/2)),g=rendered.geometry;
+  const left=g.noteLeft+visibleBeats*g.beatWidth,mask=document.createElement('div');
+  mask.className='score-recall-mask';mask.style.left=`${left}px`;mask.style.width=`${Math.max(0,rendered.canvasWidth-left)}px`;mask.setAttribute('aria-hidden','true');score.appendChild(mask);
+}
+
 export function createSessionView({ app, navigate }) {
   app.innerHTML = `<div class="app-shell is-compact session-v09"><header class="topbar"><button class="brand session-close"><span class="brand-mark">B</span><span><b>Bebop Reader</b><small>READ → SING → FLOW</small></span></button><div class="key-pill"><span>KEY</span><b>C</b></div></header><main class="session-main"><div class="session-meta"><button class="icon-btn session-close">×</button><div class="session-progress"><div id="session-progress-fill"></div></div><span id="session-position">READY</span></div><section class="session-intro"><span class="eyebrow">CONTINUOUS SESSION</span><h1>音楽を止めずに読む。</h1><p>最初の4カウント後は、beatが流れ続けます。</p></section><section class="score-card score-card-v08 session-score-card"><div class="morph-badge hidden" id="session-morph"></div><div class="score-wrap" id="session-score-viewport"><div id="session-score"></div><div id="session-playhead" class="playhead"></div></div><div class="session-empty" id="session-empty">次の譜面は音楽の中で現れます</div></section><div class="session-phase" id="session-phase"><span class="pulse-dot"></span><b>READY</b><small>STARTを一度タップ</small></div><div class="session-count hidden" id="session-count">1</div><div class="session-feedback" id="session-feedback"></div><button class="primary big" id="session-start">START <span>→</span></button><button class="primary big hidden" id="session-resume">RESUME <span>→</span></button><div class="session-debug hidden" id="session-debug"></div></main><div class="build-tag">v0.9 slice</div></div>`;
   const root = app.querySelector('.session-v09'), score = root.querySelector('#session-score'), viewport = root.querySelector('#session-score-viewport'), playhead = root.querySelector('#session-playhead'), phase = root.querySelector('#session-phase'), count = root.querySelector('#session-count'), feedback = root.querySelector('#session-feedback'), start = root.querySelector('#session-start'), resume = root.querySelector('#session-resume'), progress = root.querySelector('#session-progress-fill'), position = root.querySelector('#session-position'), empty = root.querySelector('#session-empty'), debug = root.querySelector('#session-debug'), morph = root.querySelector('#session-morph');
@@ -36,8 +43,8 @@ export function createSessionView({ app, navigate }) {
     setCount(value) { if (value == null) count.classList.add('hidden'); else { count.textContent = String(value); count.classList.remove('hidden'); } },
     clearScore() { currentEvent = null; currentScoreModel = null; clearMorphHighlight(score); morph.classList.add('hidden'); score.innerHTML = ''; playhead.classList.remove('active'); empty.classList.remove('hidden'); },
     showEvent(event, scoreModel) {
-      currentEvent = event; currentScoreModel = scoreModel; empty.classList.add('hidden'); renderNotation(score, scoreModel); resetFollower(score, viewport, playhead, scoreModel); playhead.classList.add('active');
-      if(event.presentationMode==='FLOW'){morph.textContent=event.flowAction==='CONNECT'?'4小節つなげる':'続けて歌う';morph.classList.remove('hidden');}
+      currentEvent = event; currentScoreModel = scoreModel; empty.classList.add('hidden'); const rendered=renderNotation(score, scoreModel); applyScoreVisibility(score,event,scoreModel,rendered); resetFollower(score, viewport, playhead, scoreModel); playhead.classList.add('active');
+      if(event.presentationMode==='FLOW'){morph.textContent=event.flowAction==='RECALL'?'後半は思い出して':event.flowAction==='CONNECT'?'4小節つなげる':'続けて歌う';morph.classList.remove('hidden');}
       else if(event.morph?.active){ morph.textContent=morphCopy[event.morph.type]||'少し変わる'; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); }
       else morph.classList.add('hidden');
     },
