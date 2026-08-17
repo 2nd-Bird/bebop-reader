@@ -8,32 +8,26 @@ function chordRootFreq(chord,key='C'){
   return 440*Math.pow(2,(midi-69)/12);
 }
 function scheduleTone({ time, freq, duration, volume, type = 'sine' }) {
-  const ctx = getAudioContext();
-  const out = getMasterBus();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, time);
-  gain.gain.setValueAtTime(0.0001, time);
-  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), time + 0.006);
-  gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-  osc.connect(gain);
-  gain.connect(out);
-  osc.start(time);
-  osc.stop(time + duration + 0.02);
+  const ctx = getAudioContext(),out = getMasterBus(),osc = ctx.createOscillator(),gain = ctx.createGain();
+  osc.type = type;osc.frequency.setValueAtTime(freq, time);gain.gain.setValueAtTime(0.0001, time);gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), time + 0.006);gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);osc.connect(gain);gain.connect(out);osc.start(time);osc.stop(time + duration + 0.02);
   return () => { try { osc.stop(); } catch {} };
 }
 
+const pushHarmony=(out,event,anchor)=>{
+  for(const h of event.harmonyTimeline||[]){const beat=anchor+Number(h.beat||0);if(beat<(event.endBeat??Infinity))out.push({beat,chord:h.chord});}
+};
 export function sessionHarmonyPulses(plan){
   const out=[];
   for(const event of plan?.events||[]){
     const local=event.harmonyTimeline?.length?event.harmonyTimeline:[{beat:0,chord:event.harmonyContext||plan.key||'C'}];
-    const phraseBeats=Math.max(1,event.scoreModel?.totalBeats||4),eventEnd=event.endBeat??event.startBeat+16;
-    for(let offset=0;event.startBeat+offset<eventEnd;offset+=phraseBeats){
-      for(const h of local){const beat=event.startBeat+offset+Number(h.beat||0);if(beat<eventEnd)out.push({beat,chord:h.chord});}
-    }
+    const firstChord=local[0]?.chord||plan.key||'C';
+    if(!event.harmonyTimeline?.length)event.harmonyTimeline=local;
+    out.push({beat:event.startBeat,chord:firstChord});
+    if(event.modelPolicy==='TEACHER_CALL'&&event.modelStartBeat!=null)pushHarmony(out,event,event.modelStartBeat);
+    pushHarmony(out,event,event.singStartBeat);
   }
-  return out.sort((a,b)=>a.beat-b.beat);
+  const byBeat=new Map();for(const x of out.sort((a,b)=>a.beat-b.beat))byBeat.set(`${x.beat}:${x.chord}`,x);
+  return [...byBeat.values()].sort((a,b)=>a.beat-b.beat);
 }
 function activeChordAtBeat(pulses,beat,fallback='C'){
   let chord=fallback;for(const p of pulses){if(p.beat>beat+1e-9)break;chord=p.chord||chord;}return chord;
@@ -50,40 +44,21 @@ export function grooveEvents({ fromBeat = 0, toBeat = 16, key = 'C', beatsPerBar
 }
 
 export function startGroove({ transport, key = 'C', plan=null, totalBeats = Infinity, fromBeat = 0, lookaheadSec = 8, intervalMs = 500, primeBeats = 16 } = {}) {
-  const ctx = getAudioContext();
-  const harmonyPulses=sessionHarmonyPulses(plan);
-  let nextBeat = Math.max(0, Math.ceil(fromBeat));
-  let stopped = false;
-  let scheduledBeats = nextBeat;
+  const ctx = getAudioContext(),harmonyPulses=sessionHarmonyPulses(plan);
+  let nextBeat = Math.max(0, Math.ceil(fromBeat)),stopped = false,scheduledBeats = nextBeat;
   const cancelNodes = [];
-
   const scheduleThroughBeat = beatLimit => {
-    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.ceil(beatLimit)));
-    if (endBeat <= nextBeat) return;
+    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.ceil(beatLimit)));if (endBeat <= nextBeat) return;
     for (const event of grooveEvents({ fromBeat: nextBeat, toBeat: endBeat, key, beatsPerBar: transport.beatsPerBar, harmonyPulses })) {
-      const scheduledTime = transport.timeAtBeat(event.beat);
-      if (scheduledTime < ctx.currentTime - 0.03) continue;
-      const time = Math.max(scheduledTime, ctx.currentTime + 0.008);
+      const scheduledTime = transport.timeAtBeat(event.beat);if (scheduledTime < ctx.currentTime - 0.03) continue;const time = Math.max(scheduledTime, ctx.currentTime + 0.008);
       if (event.kind === 'click') cancelNodes.push(scheduleClickAtTime(time, { accent: event.accent, level: event.level }));
       else cancelNodes.push(scheduleTone({time,freq:event.freq,duration:Math.max(0.04,event.durationBeats*transport.secondsPerBeat),volume:event.volume,type:event.type}));
     }
-    scheduledBeats = Math.max(scheduledBeats, endBeat);
-    nextBeat = endBeat;
+    scheduledBeats = Math.max(scheduledBeats, endBeat);nextBeat = endBeat;
   };
-
   scheduleThroughBeat(Math.min(totalBeats, nextBeat + primeBeats));
-  const schedule = () => {
-    if (stopped || transport.state === 'stopped' || transport.state === 'paused') return;
-    const horizonBeat = transport.beatAtTime(ctx.currentTime + lookaheadSec);
-    scheduleThroughBeat(horizonBeat);
-  };
+  const schedule = () => {if (stopped || transport.state === 'stopped' || transport.state === 'paused') return;const horizonBeat = transport.beatAtTime(ctx.currentTime + lookaheadSec);scheduleThroughBeat(horizonBeat);};
   const timer = setInterval(schedule, intervalMs);
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    clearInterval(timer);
-    for (const cancel of cancelNodes) cancel();
-  };
-  stop.status = () => ({ nextBeat, scheduledBeats, lookaheadSec, contextState: ctx.state });
-  return stop;
+  const stop = () => {if (stopped) return;stopped = true;clearInterval(timer);for (const cancel of cancelNodes) cancel();};
+  stop.status = () => ({ nextBeat, scheduledBeats, lookaheadSec, contextState: ctx.state });return stop;
 }
