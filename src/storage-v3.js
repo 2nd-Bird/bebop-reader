@@ -1,4 +1,5 @@
 import {applyEventResult,deriveStageProgress} from './curriculum/mastery.js';
+import {STAGES} from './curriculum/stages.js';
 const KEY='bebop-reader-state-v3',LEGACY_KEY='bebop-reader-state-v2';
 const defaults={version:3,familyMastery:{},variantHistory:{},stageProgress:{currentStage:0,unlockedStages:[0],advanced:false},keyProgress:{C:{unlocked:true}},reviewQueue:[],streak:0,lastPracticeDate:null,totalSessions:0,settings:{solfege:false,preferredBpm:72,latencyMs:0},currentSession:null,lastSessionResult:null,migratedFromV2:false};
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -20,6 +21,6 @@ export function recordSessionEventV3(event,result){return mutateV3(s=>{
  });}
 export function completeSessionV3(plan,summary){return mutateV3(s=>{
  const today=todayTokyo();if(s.lastPracticeDate!==today){if(s.lastPracticeDate){const d=(new Date(today)-new Date(s.lastPracticeDate))/86400000;s.streak=d===1?s.streak+1:1;}else s.streak=1;s.lastPracticeDate=today;}
- s.totalSessions=(s.totalSessions||0)+1;s.lastSessionResult={...summary,sessionId:plan.sessionId,completedAt:Date.now(),focusFamilyIds:plan.focusFamilyIds||[]};s.currentSession=null;s.stageProgress=deriveStageProgress(s.familyMastery,s.stageProgress.currentStage,3);rebuildReviewQueue(s);
+ s.totalSessions=(s.totalSessions||0)+1;s.lastSessionResult={...summary,sessionId:plan.sessionId,completedAt:Date.now(),focusFamilyIds:plan.focusFamilyIds||[]};s.currentSession=null;s.stageProgress=deriveStageProgress(s.familyMastery,s.stageProgress.currentStage,STAGES.length-1);rebuildReviewQueue(s);
  });}
 export const storageKeyV3=KEY;
