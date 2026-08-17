@@ -13,14 +13,39 @@ const clamp01 = n => Math.max(0, Math.min(1, n));
 
 export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult = null, onSessionComplete = null }) {
   const timeline = createTimeline(plan);
-  let transport = null, grooveStop = null, raf = 0, running = false;
-  let activeEventId = null, displayedEventId = null, lastPhase = null;
+  let transport = null, grooveStop = null, raf = 0, running = false, interrupted = false;
+  let activeEventId = null, displayedEventId = null, lastPhase = null, audioContext = null;
   const scored = new Set(), results = [], modelStops = [], occupiedEchoSlots = new Set(), echoWindows = [];
+
+  const cancelModels = () => { modelStops.splice(0).forEach(stop => stop?.()); };
+  const stopOutput = () => { grooveStop?.(); grooveStop = null; cancelModels(); };
+
+  function scheduleFutureModels(fromBeat = 0) {
+    for (const event of timeline.events) {
+      if (event.modelPolicy === 'TEACHER_CALL' && event.modelStartBeat >= fromBeat) {
+        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: .18, type: 'triangle' }));
+      }
+    }
+    for (const echo of echoWindows) {
+      if (echo.startBeat < fromBeat) continue;
+      const source = timeline.events.find(event => event.eventId === echo.sourceEventId);
+      if (source) modelStops.push(scheduleModelPhrase({ transport, scoreModel: source.scoreModel, startBeat: echo.startBeat, volume: .18, type: 'triangle' }));
+    }
+  }
+
+  function startOutput(fromBeat = 0) {
+    grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
+    scheduleFutureModels(fromBeat);
+  }
 
   function scheduleRecovery(event,result){
     if(!event||!result||result.stars>=3)return;
     const echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
-    if(echoSlot){occupiedEchoSlots.add(echoSlot.eventId);modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.18,type:'triangle'}));echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});}
+    if(echoSlot){
+      occupiedEchoSlots.add(echoSlot.eventId);
+      echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});
+      if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.18,type:'triangle'}));
+    }
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
   }
 
@@ -30,17 +55,72 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     scored.add(event.eventId); results.push(result); scheduleRecovery(event,result); onEventResult?.(event,result); return result;
   }
 
+  function detachLifecycle() {
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    audioContext?.removeEventListener?.('statechange', onAudioStateChange);
+  }
+
+  function interrupt(reason = 'background') {
+    if (!running || interrupted || !transport) return;
+    const beat = transport.currentBeat();
+    const state = beat >= 0 ? timeline.phaseAtBeat(beat) : { event: null, phase: 'COUNT_IN' };
+    const samples = stopSessionCapture();
+
+    // If the answer window finished, preserve the completed attempt. If it was cut in half,
+    // do not penalize the learner; reserve a later retry and mark this slot handled.
+    if (state.event && !scored.has(state.event.eventId)) {
+      if (beat >= state.event.singEndBeat) scoreOne(state.event, samples);
+      else if (beat >= state.event.singStartBeat) {
+        scored.add(state.event.eventId);
+        scheduleDelayedRetry(timeline.events, state.event, { minGapEvents: 1 });
+      }
+    }
+
+    transport.pause();
+    stopOutput();
+    cancelAnimationFrame(raf);
+    interrupted = true;
+    document.body.classList.remove('attempting');
+    view.showInterrupted({ reason, onResume: resume });
+  }
+
+  async function resume() {
+    if (!running || !interrupted || !transport) return;
+    try {
+      view.setResuming();
+      await ensureAudio();
+      const boundary = transport.resumeAtBoundary({ boundaryBeats: 16, leadSec: .35 });
+      activeEventId = null; displayedEventId = null; lastPhase = null;
+      view.clearScore();
+      startOutput(boundary);
+      await startSessionCapture();
+      interrupted = false;
+      view.setRunning();
+      raf = requestAnimationFrame(frame);
+    } catch (error) {
+      view.showInterrupted({ reason: 'audio', onResume: resume, error });
+    }
+  }
+
+  function onVisibilityChange() {
+    if (document.visibilityState === 'hidden') interrupt('background');
+  }
+
+  function onAudioStateChange() {
+    if (running && !interrupted && audioContext && audioContext.state !== 'running') interrupt('audio');
+  }
+
   async function finish() {
     if (!running) return;
-    running = false; cancelAnimationFrame(raf);
+    running = false; interrupted = false; cancelAnimationFrame(raf); detachLifecycle();
     const samples = stopSessionCapture();
     for (const event of timeline.events) if (!scored.has(event.eventId) && transport.currentBeat() >= event.singEndBeat) scoreOne(event, samples);
-    grooveStop?.(); modelStops.forEach(stop=>stop?.()); transport.stop(); stopMic(); view.setCount(null);
+    stopOutput(); transport.stop(); stopMic(); view.setCount(null);
     const summary=summarizeSession(results);onSessionComplete?.(summary,plan);view.showSummary(summary);
   }
 
   function frame() {
-    if (!running) return;
+    if (!running || interrupted) return;
     const beat = transport.currentBeat(), pos = transport.position();
     if (beat >= plan.totalBeats) { finish(); return; }
     if (beat < 0) {
@@ -68,20 +148,20 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       if (running) return;
       try {
         view.setStarting(); await Promise.all([ensureAudio(), initMic()]);
-        const ctx = getAudioContext(); transport = createTransport({ audioContext: ctx, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
-        const countInBeats = plan.countInBars * plan.beatsPerBar, origin = ctx.currentTime + countInBeats * transport.secondsPerBeat + 0.12;
+        audioContext = getAudioContext(); transport = createTransport({ audioContext, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
+        const countInBeats = plan.countInBars * plan.beatsPerBar, origin = audioContext.currentTime + countInBeats * transport.secondsPerBeat + 0.12;
         transport.startAt(origin);
         scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });
-
-        // Prime all deterministic output before starting the analysis loop. This is important on iOS:
-        // Web Audio events survive main-thread jitter, while short JS scheduling timers do not.
-        grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, primeBeats: 16, lookaheadSec: 8 });
-        for(const event of timeline.events) if(event.modelPolicy==='TEACHER_CALL') modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:event.modelStartBeat,volume:.18,type:'triangle'}));
-
+        startOutput(0);
         await startSessionCapture();
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        audioContext.addEventListener?.('statechange', onAudioStateChange);
         view.setRunning(); running = true; raf = requestAnimationFrame(frame);
-      } catch (error) { running = false; grooveStop?.(); modelStops.forEach(stop=>stop?.()); stopSessionCapture(); stopMic(); view.showError(error); }
+      } catch (error) { running = false; interrupted = false; stopOutput(); stopSessionCapture(); stopMic(); detachLifecycle(); view.showError(error); }
     },
-    stop() { if (!running) return; running = false; cancelAnimationFrame(raf); grooveStop?.(); modelStops.forEach(stop=>stop?.()); stopSessionCapture(); transport?.stop(); stopMic(); document.body.classList.remove('attempting'); },
+    stop() {
+      if (!running) return;
+      running = false; interrupted = false; cancelAnimationFrame(raf); detachLifecycle(); stopOutput(); stopSessionCapture(); transport?.stop(); stopMic(); document.body.classList.remove('attempting');
+    },
   };
 }

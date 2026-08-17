@@ -16,6 +16,7 @@ function scheduleTone({ time, freq, duration, volume, type = 'sine' }) {
   gain.connect(out);
   osc.start(time);
   osc.stop(time + duration + 0.02);
+  return () => { try { osc.stop(); } catch {} };
 }
 
 export function grooveEvents({ fromBeat = 0, toBeat = 16, key = 'C', beatsPerBar = 4 } = {}) {
@@ -30,42 +31,47 @@ export function grooveEvents({ fromBeat = 0, toBeat = 16, key = 'C', beatsPerBar
   return events;
 }
 
-export function startGroove({ transport, key = 'C', totalBeats = Infinity, lookaheadSec = 8, intervalMs = 500, primeBeats = 16 } = {}) {
+export function startGroove({ transport, key = 'C', totalBeats = Infinity, fromBeat = 0, lookaheadSec = 8, intervalMs = 500, primeBeats = 16 } = {}) {
   const ctx = getAudioContext();
-  let nextBeat = 0;
+  let nextBeat = Math.max(0, Math.ceil(fromBeat));
   let stopped = false;
-  let scheduledBeats = 0;
+  let scheduledBeats = nextBeat;
+  const cancelNodes = [];
 
   const scheduleThroughBeat = beatLimit => {
-    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.floor(beatLimit) + 1));
+    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.ceil(beatLimit)));
     if (endBeat <= nextBeat) return;
     for (const event of grooveEvents({ fromBeat: nextBeat, toBeat: endBeat, key, beatsPerBar: transport.beatsPerBar })) {
       const time = transport.timeAtBeat(event.beat);
       if (time < ctx.currentTime - 0.03) continue;
-      scheduleTone({
+      cancelNodes.push(scheduleTone({
         time: Math.max(time, ctx.currentTime + 0.008),
         freq: event.freq,
         duration: Math.max(0.04, event.durationBeats * transport.secondsPerBeat),
         volume: event.volume,
         type: event.type,
-      });
+      }));
     }
     scheduledBeats = Math.max(scheduledBeats, endBeat);
     nextBeat = endBeat;
   };
 
-  // iOS Safari can delay short JS timers while the mic analyser is busy. Prime four bars now,
-  // while START still has a healthy count-in lead, then maintain a wide absolute-time horizon.
-  scheduleThroughBeat(Math.min(totalBeats, primeBeats));
+  // Prime four bars on the AudioContext clock. On resume, prime from the chosen event boundary.
+  scheduleThroughBeat(Math.min(totalBeats, nextBeat + primeBeats));
 
   const schedule = () => {
-    if (stopped || transport.state === 'stopped') return;
+    if (stopped || transport.state === 'stopped' || transport.state === 'paused') return;
     const horizonBeat = transport.beatAtTime(ctx.currentTime + lookaheadSec);
     scheduleThroughBeat(horizonBeat);
   };
 
   const timer = setInterval(schedule, intervalMs);
-  const stop = () => { stopped = true; clearInterval(timer); };
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+    for (const cancel of cancelNodes) cancel();
+  };
   stop.status = () => ({ nextBeat, scheduledBeats, lookaheadSec, contextState: ctx.state });
   return stop;
 }
