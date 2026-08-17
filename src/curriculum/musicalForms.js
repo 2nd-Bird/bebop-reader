@@ -27,8 +27,18 @@ export const MUSICAL_FORMS=[
     beatsPerBar:4,
     lengthBeats:128,
     stage:14,
-    status:'DEFINED',
-    integrationFamilyIds:['relative-major-reinterpret','relative-minor-line','density-g-to-f'],
+    status:'ACTIVE',
+    integrationFamilyIds:['g-to-f-surfaces','relative-major-reinterpret'],
+    slotPrograms:[
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-seed',singOffset:8},
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-return',singOffset:4},
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-fan',singOffset:8},
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-return',singOffset:4},
+      {familyId:'relative-major-reinterpret',variantId:'rm-f-triad',singOffsetByChorus:[4,12],movePolicy:'RELATIVE_MAJOR_OF_DOMINANT'},
+      {familyId:'relative-major-reinterpret',variantId:'rm-f-triad',singOffsetByChorus:[4,12],movePolicy:'RELATIVE_MAJOR_OF_DOMINANT'},
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-fan',singOffset:8},
+      {familyId:'g-to-f-surfaces',variantId:'gf-cell-return',singOffset:4},
+    ],
     timeline:[
       {beat:0,chord:'C6'},{beat:4,chord:'A7'},{beat:8,chord:'Dm7'},{beat:12,chord:'G7'},
       {beat:16,chord:'C6'},{beat:20,chord:'A7'},{beat:24,chord:'Dm7'},{beat:28,chord:'G7'},
@@ -38,7 +48,7 @@ export const MUSICAL_FORMS=[
       {beat:96,chord:'C6'},{beat:100,chord:'A7'},{beat:104,chord:'Dm7'},{beat:108,chord:'G7'},
       {beat:112,chord:'C6'},{beat:116,chord:'A7'},{beat:120,chord:'Dm7'},{beat:124,chord:'G7'},
     ],
-    source:{type:'curriculum',reference:'Curriculum Spec v1 Stage 14',adaptation:'Simplified C Rhythm Changes training field. The bridge is the dominant chain E7 → A7 → D7 → G7; phrase transposition/functional MOVE is required before this form becomes ACTIVE.'}
+    source:{type:'curriculum',reference:'Curriculum Spec v1 Stage 14',adaptation:'Simplified C Rhythm Changes training field. The bridge uses the verified Stage 10 Relative Major shape as one Variant identity, functionally MOVEd at Learning Event time through E7 → A7 → D7 → G7. It is not a new Hamase transcription.'}
   },
 ];
 
