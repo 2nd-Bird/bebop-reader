@@ -1,6 +1,9 @@
 import {EXERCISES} from './src/exercises.js';
 import {yin,midiToFreq} from './src/pitchDetector.js';
 import {scoreAttempt} from './src/scoring.js';
+import {scoreEvent} from './src/scoring/eventScoring.js';
+import {createTransport} from './src/session/transport.js';
+import {createTimeline} from './src/session/timeline.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
 assert(EXERCISES.length>=24,'need >=24 exercises');
@@ -17,4 +20,35 @@ const d=yin(b,sr);assert(d.hz && Math.abs(d.hz-hz)<2,`YIN failed ${d.hz}`);
 const e=EXERCISES.find(x=>x.id==='s01'); const spb=60/e.bpm; const samples=[];
 for(const n of e.notes){if(n.rest)continue;for(let t=n.startBeat*spb;t<(n.startBeat+n.duration)*spb;t+=.05)samples.push({t:t+.02,hz:midiToFreq(n.midi),clarity:.95,rms:.1});}
 const sc=scoreAttempt(e,samples,0);assert(sc.pitch>95,`pitch score ${sc.pitch}`);assert(sc.time>90,`time ${sc.time}`);assert(sc.flow>90,`flow ${sc.flow}`);
-console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; perfect synthetic score`,sc.pitch,sc.time,sc.flow);
+
+const fakeCtx={currentTime:10};
+const transport=createTransport({audioContext:fakeCtx,bpm:60,beatsPerBar:4});
+transport.startAt(14);
+assert(transport.currentBeat()===-4,'transport count-in origin');
+assert(transport.timeAtBeat(0)===14,'transport beat zero');
+fakeCtx.currentTime=314;
+assert(Math.abs(transport.currentBeat()-300)<1e-9,'transport drift over five minutes');
+assert(transport.position().bar===76,'transport bar calculation');
+transport.pause();fakeCtx.currentTime=320;assert(Math.abs(transport.currentBeat()-300)<1e-9,'transport pause');
+assert(transport.resumeAtBoundary()===300,'transport resume boundary');
+
+const timeline=createTimeline({totalBeats:32,events:[
+  {eventId:'e1',startBeat:0,prepareBeat:4,singStartBeat:8,singEndBeat:12,endBeat:16},
+  {eventId:'e2',startBeat:16,prepareBeat:20,singStartBeat:24,singEndBeat:28,endBeat:32},
+]});
+assert(timeline.phaseAtBeat(2).phase==='SPACE','timeline space');
+assert(timeline.phaseAtBeat(6).phase==='AUDIATE','timeline audiate');
+assert(timeline.phaseAtBeat(9).phase==='SING','timeline sing');
+assert(timeline.phaseAtBeat(13).phase==='FEEDBACK','timeline feedback');
+
+const p01=EXERCISES.find(x=>x.id==='p01');
+const scoringCtx={currentTime:96};
+const scoringTransport=createTransport({audioContext:scoringCtx,bpm:60,beatsPerBar:4});
+scoringTransport.startAt(100);
+const event={eventId:'score-1',singStartBeat:8,singEndBeat:12};
+const absoluteSamples=[];
+for(const n of p01.notes){if(n.rest)continue;for(let t=n.startBeat;t<n.startBeat+n.duration;t+=.05)absoluteSamples.push({t:scoringTransport.timeAtBeat(8+t)+.02,hz:midiToFreq(n.midi),clarity:.95,rms:.1});}
+const eventScore=scoreEvent({event,scoreModel:p01,samples:absoluteSamples,transport:scoringTransport,latencyMs:0});
+assert(eventScore.pitch>95,`event pitch ${eventScore.pitch}`);assert(eventScore.time>90,`event time ${eventScore.time}`);assert(eventScore.flow>90,`event flow ${eventScore.flow}`);
+
+console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; scoring ${sc.pitch}/${sc.time}/${sc.flow}; transport/timeline/event windows OK`);
