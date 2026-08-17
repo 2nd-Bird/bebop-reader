@@ -14,7 +14,7 @@ assert(stage?.id==='forms-flow'&&stage.title==='Blues / Rhythm Changes','Stage 1
 assert(stage.unlock.forms.join(',')==='c-blues-12,rhythm-changes-32','Stage 14 unlock graph names both target forms');
 assert(MUSICAL_FORMS.length===2,'two roadmap forms are explicitly modeled');
 assert(blues.bars===12&&blues.lengthBeats===48&&blues.status==='ACTIVE','C Blues is an active 12-bar / 48-beat field');
-assert(rhythm.bars===32&&rhythm.lengthBeats===128&&rhythm.status==='DEFINED','Rhythm Changes is modeled as 32 bars but remains gated');
+assert(rhythm.bars===32&&rhythm.lengthBeats===128&&rhythm.status==='ACTIVE','Rhythm Changes is an active 32-bar / 128-beat field after functional MOVE is available');
 assert(blues.source.type==='curriculum'&&/not a Hamase transcription/.test(blues.source.adaptation),'C Blues form is curriculum integration, not fabricated source transcription');
 
 const expectedBlues=['C7','C7','C7','C7','F7','F7','C7','C7','G7','F7','C7','G7'];
@@ -26,7 +26,7 @@ assert(twoChoruses.some(x=>x.beat===48&&x.chord==='C7')&&twoChoruses.some(x=>x.b
 assert(sliceFormHarmony(blues,20,4)[0].chord==='F7','bar 6 phrase window hears IV');
 assert(sliceFormHarmony(blues,44,4)[0].chord==='G7','bar 12 phrase window hears V turnaround');
 
-assert(chordAtFormBeat(rhythm,64)==='E7'&&chordAtFormBeat(rhythm,72)==='A7'&&chordAtFormBeat(rhythm,80)==='D7'&&chordAtFormBeat(rhythm,88)==='G7','defined Rhythm Changes bridge is the dominant chain E7→A7→D7→G7');
+assert(chordAtFormBeat(rhythm,64)==='E7'&&chordAtFormBeat(rhythm,72)==='A7'&&chordAtFormBeat(rhythm,80)==='D7'&&chordAtFormBeat(rhythm,88)==='G7','Rhythm Changes bridge is the dominant chain E7→A7→D7→G7');
 
 const plan=buildDailySessionPlan({currentStage:14,bpm:60,eventCount:24,targetSessionBeats:320});
 assert(plan.form==='c-blues-12'&&plan.musicalFormId==='c-blues-12','Stage 14 defaults to C Blues rather than an exercise field');
@@ -54,8 +54,4 @@ const groove=sessionHarmonyPulses(plan);
 assert(groove.map(x=>`${x.beat}:${x.chord}`).slice(0,7).join(',')==='0:C7,16:F7,24:C7,32:G7,36:F7,40:C7,44:G7','groove follows the global 12-bar form even outside SING windows');
 assert(groove.some(x=>x.beat===48&&x.chord==='C7'),'groove carries harmony continuously into the next chorus');
 
-let locked=false;
-try{buildDailySessionPlan({currentStage:14,formId:'rhythm-changes-32',eventCount:20,targetSessionBeats:320});}catch(err){locked=/defined but not active yet/.test(String(err?.message||err));}
-assert(locked,'Rhythm Changes cannot be claimed active before functional MOVE/transposition is implemented');
-
-console.log('OK: Stage 14 runs known Phrase Families through a continuous 12-bar C Blues field while Rhythm Changes remains explicitly gated');
+console.log('OK: Stage 14 runs known Phrase Families through a continuous 12-bar C Blues field and exposes Rhythm Changes through a separate functional-MOVE program');
