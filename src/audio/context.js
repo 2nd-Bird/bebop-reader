@@ -1,5 +1,6 @@
 let ctx = null;
 let master = null;
+let audioSessionState = { supported: false, type: 'unavailable', lastRequested: null, error: null };
 
 export function getAudioContext() {
   if (!ctx || ctx.state === 'closed') {
@@ -17,6 +18,46 @@ export function getMasterBus() {
     master.connect(c.destination);
   }
   return master;
+}
+
+function setAudioSessionType(type) {
+  const session = navigator.audioSession;
+  if (!session || !('type' in session)) {
+    audioSessionState = { supported: false, type: 'unavailable', lastRequested: type, error: null };
+    return audioSessionState;
+  }
+  try {
+    session.type = type;
+    audioSessionState = { supported: true, type: session.type, lastRequested: type, error: null };
+  } catch (error) {
+    audioSessionState = { supported: true, type: session.type || 'unknown', lastRequested: type, error: String(error?.message || error) };
+  }
+  return audioSessionState;
+}
+
+// WebKit may change the native audio category when getUserMedia starts. Reset before capture,
+// then explicitly request the simultaneous playback/recording category after capture begins.
+export function prepareDuplexAudioSession() {
+  return setAudioSessionType('auto');
+}
+
+export function activateDuplexAudioSession() {
+  return setAudioSessionType('play-and-record');
+}
+
+export function restorePlaybackAudioSession() {
+  const session = navigator.audioSession;
+  if (!session || !('type' in session)) return audioSessionState;
+  try { session.type = 'playback'; } catch {}
+  try { session.type = 'auto'; } catch {}
+  audioSessionState = { supported: true, type: session.type || 'auto', lastRequested: 'auto', error: null };
+  return audioSessionState;
+}
+
+export function audioSessionStatus() {
+  const session = navigator.audioSession;
+  if (session && 'type' in session) return { ...audioSessionState, supported: true, type: session.type || audioSessionState.type };
+  return { ...audioSessionState };
 }
 
 function silentPing() {

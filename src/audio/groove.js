@@ -1,4 +1,5 @@
 import { getAudioContext, getMasterBus } from './context.js';
+import { scheduleClickAtTime } from './countIn.js';
 
 const KEY_FREQ = { C: 130.81 };
 
@@ -24,9 +25,9 @@ export function grooveEvents({ fromBeat = 0, toBeat = 16, key = 'C', beatsPerBar
   const events = [];
   for (let beat = Math.max(0, Math.ceil(fromBeat)); beat < toBeat; beat += 1) {
     const beatInBar = beat % beatsPerBar;
-    events.push({ beat, freq: beatInBar === 0 ? 1760 : 1320, durationBeats: 0.055, volume: beatInBar === 0 ? 0.18 : 0.115, type: 'square' });
-    if (beatInBar === 0) events.push({ beat, freq: root, durationBeats: 0.72, volume: 0.16, type: 'triangle' });
-    if (beatInBar === 2) events.push({ beat, freq: root * 1.5, durationBeats: 0.55, volume: 0.10, type: 'triangle' });
+    events.push({ kind: 'click', beat, accent: beatInBar === 0, level: beatInBar === 0 ? 0.95 : 0.72 });
+    if (beatInBar === 0) events.push({ kind: 'tone', beat, freq: root, durationBeats: 0.72, volume: 0.18, type: 'triangle' });
+    if (beatInBar === 2) events.push({ kind: 'tone', beat, freq: root * 1.5, durationBeats: 0.55, volume: 0.12, type: 'triangle' });
   }
   return events;
 }
@@ -42,15 +43,20 @@ export function startGroove({ transport, key = 'C', totalBeats = Infinity, fromB
     const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.ceil(beatLimit)));
     if (endBeat <= nextBeat) return;
     for (const event of grooveEvents({ fromBeat: nextBeat, toBeat: endBeat, key, beatsPerBar: transport.beatsPerBar })) {
-      const time = transport.timeAtBeat(event.beat);
-      if (time < ctx.currentTime - 0.03) continue;
-      cancelNodes.push(scheduleTone({
-        time: Math.max(time, ctx.currentTime + 0.008),
-        freq: event.freq,
-        duration: Math.max(0.04, event.durationBeats * transport.secondsPerBeat),
-        volume: event.volume,
-        type: event.type,
-      }));
+      const scheduledTime = transport.timeAtBeat(event.beat);
+      if (scheduledTime < ctx.currentTime - 0.03) continue;
+      const time = Math.max(scheduledTime, ctx.currentTime + 0.008);
+      if (event.kind === 'click') {
+        cancelNodes.push(scheduleClickAtTime(time, { accent: event.accent, level: event.level }));
+      } else {
+        cancelNodes.push(scheduleTone({
+          time,
+          freq: event.freq,
+          duration: Math.max(0.04, event.durationBeats * transport.secondsPerBeat),
+          volume: event.volume,
+          type: event.type,
+        }));
+      }
     }
     scheduledBeats = Math.max(scheduledBeats, endBeat);
     nextBeat = endBeat;

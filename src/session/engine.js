@@ -1,4 +1,4 @@
-import { ensureAudio, getAudioContext } from '../audio/context.js';
+import { ensureAudio, getAudioContext, audioSessionStatus } from '../audio/context.js';
 import { scheduleCountIn } from '../audio/countIn.js';
 import { startGroove } from '../audio/groove.js';
 import { scheduleModelPhrase } from '../audio/model.js';
@@ -19,17 +19,18 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
 
   const cancelModels = () => { modelStops.splice(0).forEach(stop => stop?.()); };
   const stopOutput = () => { grooveStop?.(); grooveStop = null; cancelModels(); };
+  const audioDebug = () => ({ ...(grooveStop?.status?.() || {}), audioSession: audioSessionStatus() });
 
   function scheduleFutureModels(fromBeat = 0) {
     for (const event of timeline.events) {
       if (event.modelPolicy === 'TEACHER_CALL' && event.modelStartBeat >= fromBeat) {
-        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: .18, type: 'triangle' }));
+        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: .22, type: 'triangle' }));
       }
     }
     for (const echo of echoWindows) {
       if (echo.startBeat < fromBeat) continue;
       const source = timeline.events.find(event => event.eventId === echo.sourceEventId);
-      if (source) modelStops.push(scheduleModelPhrase({ transport, scoreModel: source.scoreModel, startBeat: echo.startBeat, volume: .18, type: 'triangle' }));
+      if (source) modelStops.push(scheduleModelPhrase({ transport, scoreModel: source.scoreModel, startBeat: echo.startBeat, volume: .22, type: 'triangle' }));
     }
   }
 
@@ -44,7 +45,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     if(echoSlot){
       occupiedEchoSlots.add(echoSlot.eventId);
       echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});
-      if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.18,type:'triangle'}));
+      if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.22,type:'triangle'}));
     }
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
   }
@@ -66,8 +67,6 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     const state = beat >= 0 ? timeline.phaseAtBeat(beat) : { event: null, phase: 'COUNT_IN' };
     const samples = stopSessionCapture();
 
-    // If the answer window finished, preserve the completed attempt. If it was cut in half,
-    // do not penalize the learner; reserve a later retry and mark this slot handled.
     if (state.event && !scored.has(state.event.eventId)) {
       if (beat >= state.event.singEndBeat) scoreOne(state.event, samples);
       else if (beat >= state.event.singStartBeat) {
@@ -89,11 +88,12 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     try {
       view.setResuming();
       await ensureAudio();
+      await startSessionCapture();
+      await ensureAudio();
       const boundary = transport.resumeAtBoundary({ boundaryBeats: 16, leadSec: .35 });
       activeEventId = null; displayedEventId = null; lastPhase = null;
       view.clearScore();
       startOutput(boundary);
-      await startSessionCapture();
       interrupted = false;
       view.setRunning();
       raf = requestAnimationFrame(frame);
@@ -127,7 +127,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       const countInBeats = plan.countInBars * plan.beatsPerBar;
       const countNo = Math.max(1, Math.min(countInBeats, Math.floor(beat) + countInBeats + 1));
       view.setCount(countNo); if (lastPhase !== 'COUNT_IN') { lastPhase = 'COUNT_IN'; view.setPhase('SPACE'); }
-      view.update({ beat, bar: 0, beatInBar: countNo, totalBeats: plan.totalBeats, progress: 0, event: null, phase: 'COUNT_IN', audio: grooveStop?.status?.() || null });
+      view.update({ beat, bar: 0, beatInBar: countNo, totalBeats: plan.totalBeats, progress: 0, event: null, phase: 'COUNT_IN', audio: audioDebug() });
       raf = requestAnimationFrame(frame); return;
     }
     view.setCount(null);
@@ -139,7 +139,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     if (phase !== lastPhase) { lastPhase = phase; view.setPhase(phase); }
     if (event && beat >= event.singEndBeat && !scored.has(event.eventId)) { const result = scoreOne(event); if (result) view.showFeedback(result); }
     const noteProgress = event ? clamp01((beat - event.singStartBeat) / (event.singEndBeat - event.singStartBeat)) : 0;
-    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event, phase, audio: grooveStop?.status?.() || null });
+    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event, phase, audio: audioDebug() });
     raf = requestAnimationFrame(frame);
   }
 
@@ -147,13 +147,19 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     async start() {
       if (running) return;
       try {
-        view.setStarting(); await Promise.all([ensureAudio(), initMic()]);
-        audioContext = getAudioContext(); transport = createTransport({ audioContext, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
+        view.setStarting();
+        // Do not race AudioContext.resume() against iOS getUserMedia audio-session recategorization.
+        // Establish output, capture, the duplex category, then re-check output before any musical nodes are scheduled.
+        await ensureAudio();
+        await initMic();
+        await startSessionCapture();
+        await ensureAudio();
+        audioContext = getAudioContext();
+        transport = createTransport({ audioContext, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
         const countInBeats = plan.countInBars * plan.beatsPerBar, origin = audioContext.currentTime + countInBeats * transport.secondsPerBeat + 0.12;
         transport.startAt(origin);
         scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });
         startOutput(0);
-        await startSessionCapture();
         document.addEventListener('visibilitychange', onVisibilityChange);
         audioContext.addEventListener?.('statechange', onAudioStateChange);
         view.setRunning(); running = true; raf = requestAnimationFrame(frame);

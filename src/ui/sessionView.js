@@ -42,7 +42,10 @@ export function createSessionView({ app, navigate }) {
     update({ beat, bar, beatInBar, totalBeats, progress: noteProgress, event, phase: phaseName, audio = null }) {
       const pct = Math.max(0, Math.min(100, beat / totalBeats * 100)); progress.style.width = `${pct}%`; position.textContent = beat < 0 ? 'COUNT IN' : `BAR ${bar} · ${beatInBar}`;
       if (currentEvent && currentScoreModel && event?.eventId === currentEvent.eventId) updateFollower(score, viewport, playhead, currentScoreModel, noteProgress, { autoScroll: true });
-      if (debugEnabled) debug.textContent = `beat ${beat.toFixed(2)} | bar ${bar}:${beatInBar} | ${event?.eventId || '-'} | ${event?.presentationMode||'-'} | ${phaseName} | audio ${audio?.contextState||'-'} | groove→${audio?.scheduledBeats??'-'}`;
+      if (debugEnabled) {
+        const session = audio?.audioSession;
+        debug.textContent = `beat ${beat.toFixed(2)} | bar ${bar}:${beatInBar} | ${event?.eventId || '-'} | ${event?.presentationMode||'-'} | ${phaseName} | ctx ${audio?.contextState||'-'} | session ${session?.type||'-'}${session?.error?'!':''} | groove→${audio?.scheduledBeats??'-'}`;
+      }
     },
     showFeedback(result) { feedback.textContent = result.stars >= 3 ? '✓' : '△'; feedback.classList.add('show'); setTimeout(() => feedback.classList.remove('show'), 650); },
     showError(error) { start.disabled = false; start.textContent = 'もう一度 START'; phase.innerHTML = `<span class="pulse-dot error"></span><b>開始できませんでした</b><small>${String(error?.message || error)}</small>`; },
