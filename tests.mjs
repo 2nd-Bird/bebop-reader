@@ -53,7 +53,7 @@ const eventScore=scoreEvent({event:scoringEvent,scoreModel:p01,samples:absoluteS
 
 // Curriculum contracts.
 assert(validateCurriculum(),'curriculum validation');
-assert(STAGES.length===7,`stage count ${STAGES.length}`);assert(PHRASE_FAMILIES.length===9,`family count ${PHRASE_FAMILIES.length}`);
+assert(STAGES.length===8,`stage count ${STAGES.length}`);assert(PHRASE_FAMILIES.length===10,`family count ${PHRASE_FAMILIES.length}`);
 assert(VARIANTS.every(v=>!('harmonyTimeline' in v)&&!('harmonyFieldId' in v)),'Phrase Variant must not own harmony assignment');
 for(const v of VARIANTS)if(v.parentVariant)assert(variantById(v.parentVariant)?.familyId===v.familyId,`${v.variantId} parent family`);
 
@@ -96,6 +96,12 @@ assert(defaultHarmonyFieldFor(variantById('harmony-descent-grow').allowedHarmony
 assert(defaultHarmonyFieldFor(variantById('line-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='G7,Em7,Cmaj7','line-first cell harmony field');
 const stage6Plan=buildDailySessionPlan({currentStage:6,eventCount:20});assert(stage6Plan.focusFamilyIds.join(',')==='harmony-born-descent,line-born-descent','Stage 6 schedules both generator families');assert(stage6Plan.events.some(x=>x.familyId==='harmony-born-descent'&&x.variantId==='harmony-descent-grow'&&x.presentationMode==='BUILD'),'Stage 6 generator A grows');assert(stage6Plan.events.some(x=>x.familyId==='line-born-descent'&&x.variantId==='line-descent-grow'&&x.presentationMode==='BUILD'),'Stage 6 generator B grows');
 
+// Stage 7 — CELL Grammar is experienced as same movement / changing surface, not as a theory operation.
+const stage7Family=familyById('g-to-f-surfaces');assert(stage7Family?.invariant==='G→F','Stage 7 invariant is explicit');assert(stage7Family?.source?.hamaseRef==='ex.087','Stage 7 ex.087 source');assert(stage7Family?.source?.sourcePages?.join(',')==='59,60','Stage 7 source pages');assert(stage7Family?.source?.adaptation,'Stage 7 pedagogical reduction is declared');
+for(const id of stage7Family.variants){const p=pitches(id);assert(p[0]==='G4'&&p.at(-1)==='F4',`${id} must preserve G→F`);assert(variantById(id).allowedHarmony.join(',')==='C',`${id} must not actualize ex.087 analytic chord labels as accompaniment`);}
+assert(pitches('gf-cell-seed').join(',')==='G4,F4','Stage 7 seed');assert(pitches('gf-cell-return').join(',')==='G4,A4,G4,F4','Stage 7 returning surface');assert(pitches('gf-cell-fan').join(',')==='G4,B4,A4,G4,F4','Stage 7 denser surface');
+const stage7Plan=buildDailySessionPlan({currentStage:7,eventCount:20});assert(stage7Plan.focusFamilyIds[0]==='g-to-f-surfaces','Stage 7 prioritizes current invariant family');assert(stage7Plan.events.some(x=>x.familyId==='g-to-f-surfaces'&&x.variantId==='gf-cell-return'&&x.presentationMode==='BUILD'),'Stage 7 grows same movement');assert(stage7Plan.events.filter(x=>x.familyId==='g-to-f-surfaces').every(x=>x.harmonyFieldId==='static-c'),'Stage 7 uses neutral C field instead of source analytic chord changes');
+
 // Previously identified source-placement failures stay prevented.
 assert(!PHRASE_FAMILIES.some(f=>f.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become a direct user-facing family');assert(!VARIANTS.some(v=>v.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become a direct user-facing variant');assert(!PHRASE_FAMILIES.some(f=>['ex.001','ex.005','ex.001 + ex.005'].includes(f.source?.hamaseRef)),'ex.001/ex.005 must not occupy document-defined Stage 4');
 
@@ -105,4 +111,4 @@ let partial=emptyFamilyMastery();const seedCold={familyId:'anchor-do-sol',varian
 let fm=emptyFamilyMastery();for(const [i,variantId] of familyById('anchor-do-sol').variants.entries())fm=applyEventResult(fm,{familyId:'anchor-do-sol',variantId,presentationMode:'COLD_READ'},{readScore:95,stars:5},3000+i);assert(isFamilyMastered(fm,'anchor-do-sol'),'family mastery requires cold coverage');assert(deriveStageProgress({'anchor-do-sol':fm},0,STAGES.length-1).currentStage===1,'stage 0 unlock');
 const adaptiveState={familyMastery:{'anchor-do-sol':fm},reviewQueue:[{familyId:'anchor-do-sol',dueAt:1}]},signals=schedulerSignals(adaptiveState,5000),adaptivePlan=buildDailySessionPlan({currentStage:0,eventCount:8,...signals});assert(signals.dueFamilyIds.includes('anchor-do-sol'),'due family signal');assert(adaptivePlan.events[0].presentationMode==='COLD_READ','known due family must start cold');
 
-console.log(`OK: ${EXERCISES.length} legacy exercises; YIN ${detected.hz.toFixed(2)}Hz; scoring ${legacyScore.pitch}/${legacyScore.time}/${legacyScore.flow}; source-aligned curriculum Stage 0-${STAGES.length-1} including Two Generators OK`);
+console.log(`OK: ${EXERCISES.length} legacy exercises; YIN ${detected.hz.toFixed(2)}Hz; scoring ${legacyScore.pitch}/${legacyScore.time}/${legacyScore.flow}; source-aligned curriculum Stage 0-${STAGES.length-1} including CELL Grammar OK`);
