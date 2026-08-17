@@ -1,5 +1,6 @@
 import './app-v08.js';
 import { mountSession } from './src/session/player.js';
+import { renderV09Home, renderV09Progress } from './src/ui/dashboardV09.js';
 
 const app = document.querySelector('#app');
 const navigate = path => { location.hash = path.startsWith('#') ? path : `#${path}`; };
@@ -15,6 +16,13 @@ function routeV09() {
   if (disposeSession) {
     disposeSession();
     disposeSession = null;
+  }
+  if (!parts.length) {
+    renderV09Home({ app, navigate });
+    return;
+  }
+  if (parts[0] === 'progress') {
+    renderV09Progress({ app, navigate });
   }
 }
 
