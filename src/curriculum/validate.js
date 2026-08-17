@@ -1,4 +1,4 @@
-import{PHRASE_FAMILIES}from'./phraseFamilies.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';
+import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';
 const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
  const famIds=new Set(),contextManagedVariantIds=new Set();
