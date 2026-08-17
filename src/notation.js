@@ -1,4 +1,4 @@
-import {SCORE_H,diatonicStep,scoreWidthFor,buildGeometry,noteLayout,timelineFor,xAtBeat} from './notation/layout.js';
+import {SCORE_H,diatonicStep,scoreWidthFor,buildGeometry,noteLayout,timelineFor,xAtBeat,beatX} from './notation/layout.js';
 
 const NS='http://www.w3.org/2000/svg';
 function el(name,attrs={}){const n=document.createElementNS(NS,name);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));return n;}
@@ -12,6 +12,10 @@ function drawLedger(svg,x,y,step,g){
 function beamGroups(notes){const groups=[];let g=[];let bucket=null;const flush=()=>{if(g.length>=2)groups.push([...g]);g=[];bucket=null;};notes.forEach((n,i)=>{const b=Math.floor(n.startBeat+1e-6),eighth=!n.rest&&Math.abs(n.duration-.5)<1e-6;if(!eighth){flush();return;}if(bucket!==null&&(b!==bucket||Math.abs(notes[g[g.length-1]].startBeat+.5-n.startBeat)>.01))flush();bucket=b;g.push(i);});flush();return groups;}
 function drawRest(svg,x,duration,g){const glyph=duration===.5?'𝄾':duration===2?'𝄼':duration===4?'𝄻':'𝄽';const t=el('text',{x,y:(g.staffTop+g.staffBottom)/2+10,'text-anchor':'middle','font-size':29,fill:'#111','font-family':'serif'});t.textContent=glyph;svg.appendChild(t);}
 function drawFlag(svg,x,y,up,color){const d=up?`M ${x} ${y} C ${x+12} ${y+5}, ${x+11} ${y+16}, ${x+2} ${y+21}`:`M ${x} ${y} C ${x-12} ${y-5}, ${x-11} ${y-16}, ${x-2} ${y-21}`;svg.appendChild(el('path',{d,fill:'none',stroke:color,'stroke-width':4,'stroke-linecap':'round'}));}
+function drawHarmony(svg,ex,g){
+  const timeline=ex.harmonyTimeline?.length?ex.harmonyTimeline:(ex.chords?.[0]?[{beat:0,chord:ex.chords[0]}]:[]);
+  timeline.forEach((h,i)=>{const x=beatX(h.beat,g)+(i===0?2:4),t=el('text',{x,y:17,'font-size':13,'font-weight':700,fill:'#6f5b31','font-family':'ui-sans-serif,system-ui,sans-serif','data-harmony-beat':h.beat});t.textContent=h.chord;svg.appendChild(t);if(i>0)svg.appendChild(el('line',{x1:beatX(h.beat,g),x2:beatX(h.beat,g),y1:20,y2:g.staffTop-3,stroke:'#b79a5a','stroke-width':1,'stroke-dasharray':'2 2'}));});
+}
 
 function drawNotes(svg,ex,g,resultNotes){
   const layout=noteLayout(ex,g),groups=beamGroups(ex.notes),beamMap=new Map();
@@ -43,7 +47,7 @@ export function renderNotation(container,ex,{resultNotes=null,showTime=true}={})
   const y0=stave.getYForLine(0),y4=stave.getYForLine(4);const g=buildGeometry(ex,{canvasWidth,staffY0:y0,staffY4:y4,noteStartX:stave.getNoteStartX()+10});
   const baseSvg=base.querySelector('svg');if(baseSvg){baseSvg.setAttribute('viewBox',`0 0 ${canvasWidth} ${SCORE_H}`);baseSvg.setAttribute('width',canvasWidth);baseSvg.setAttribute('height',SCORE_H);baseSvg.style.display='block';}
   const overlay=el('svg',{viewBox:`0 0 ${canvasWidth} ${SCORE_H}`,width:canvasWidth,height:SCORE_H,'aria-hidden':'true'});overlay.classList.add('score-note-layer');Object.assign(overlay.style,{position:'absolute',inset:'0',width:`${canvasWidth}px`,height:`${SCORE_H}px`,pointerEvents:'none',overflow:'visible'});container.appendChild(overlay);
-  const layout=drawNotes(overlay,ex,g,resultNotes);const timeline=timelineFor(ex,g);container.dataset.timeline=JSON.stringify(timeline);container.dataset.noteCount=String(layout.length);container.dataset.scoreWidth=String(canvasWidth);
+  drawHarmony(overlay,ex,g);const layout=drawNotes(overlay,ex,g,resultNotes);const timeline=timelineFor(ex,g);container.dataset.timeline=JSON.stringify(timeline);container.dataset.noteCount=String(layout.length);container.dataset.scoreWidth=String(canvasWidth);
   viewport?.classList.toggle('score-scrollable',canvasWidth>viewportWidth+4);return {canvasWidth,geometry:g,layout,timeline};
 }
 

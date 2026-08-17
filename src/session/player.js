@@ -1,13 +1,14 @@
 import { primeAudio } from '../audio/context.js';
 import { schedulerSignals } from '../curriculum/mastery.js';
+import { STAGES } from '../curriculum/stages.js';
 import { buildDailySessionPlan } from '../curriculum/scheduler.js';
 import { loadStateV3, beginSessionV3, recordSessionEventV3, completeSessionV3 } from '../storage-v3.js';
 import { createSessionView } from '../ui/sessionView.js';
 import { createSessionEngine } from './engine.js';
 
 export function mountSession({ app, navigate }) {
-  const state=loadStateV3(),override=Number(new URLSearchParams(location.search).get('stage'));
-  const currentStage=Number.isInteger(override)&&override>=0&&override<=3?override:state.stageProgress.currentStage;
+  const state=loadStateV3(),override=Number(new URLSearchParams(location.search).get('stage')),maxStage=STAGES.length-1;
+  const currentStage=Number.isInteger(override)&&override>=0&&override<=maxStage?override:state.stageProgress.currentStage;
   const signals=schedulerSignals(state);
   const plan = buildDailySessionPlan({ currentStage, key: 'C', bpm: 60, eventCount: 20, ...signals });
   const view = createSessionView({ app, navigate });

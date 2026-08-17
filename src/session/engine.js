@@ -35,7 +35,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
   }
 
   function startOutput(fromBeat = 0) {
-    grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
+    grooveStop = startGroove({ transport, key: plan.key, plan, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
     scheduleFutureModels(fromBeat);
   }
 
@@ -44,7 +44,8 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     const echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
     if(echoSlot){
       occupiedEchoSlots.add(echoSlot.eventId);
-      echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});
+      const echoEndBeat=Math.min(echoSlot.singStartBeat,echoSlot.startBeat+(event.scoreModel?.totalBeats||4));
+      echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoEndBeat,sourceEventId:event.eventId});
       if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.22,type:'triangle'}));
     }
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
@@ -102,13 +103,8 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     }
   }
 
-  function onVisibilityChange() {
-    if (document.visibilityState === 'hidden') interrupt('background');
-  }
-
-  function onAudioStateChange() {
-    if (running && !interrupted && audioContext && audioContext.state !== 'running') interrupt('audio');
-  }
+  function onVisibilityChange() { if (document.visibilityState === 'hidden') interrupt('background'); }
+  function onAudioStateChange() { if (running && !interrupted && audioContext && audioContext.state !== 'running') interrupt('audio'); }
 
   async function finish() {
     if (!running) return;
@@ -148,8 +144,6 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       if (running) return;
       try {
         view.setStarting();
-        // Do not race AudioContext.resume() against iOS getUserMedia audio-session recategorization.
-        // Establish output, capture, the duplex category, then re-check output before any musical nodes are scheduled.
         await ensureAudio();
         await initMic();
         await startSessionCapture();
