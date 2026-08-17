@@ -4,7 +4,7 @@ import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
 import{buildClosingFlowEvent}from'./flow.js';
-import{cBluesFormReady}from'./mastery.js';
+import{cBluesConnectReady,cBluesStageReady}from'./mastery.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
 
@@ -59,7 +59,7 @@ function buildProgramSlots(form,eventCount){
  }
  return out;
 }
-export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesFormReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
+export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesStageReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
 
 export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},harmonyFieldOverrides={},formId=null}={}){
  validateCurriculum();
@@ -123,7 +123,8 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  if(musicalForm?.closingFlowProgram&&events.length>=2){
    const secondLast=events.at(-2),last=events.at(-1),span=last.endBeat-secondLast.startBeat;
    if(Math.abs(span-32)<.001){
-     const flow=buildClosingFlowEvent({musicalForm,startBeat:secondLast.startBeat,endBeat:last.endBeat,key,bpm,eventId:`event-${String(events.length-1).padStart(2,'0')}-flow`});
+     const flowAction=cBluesConnectReady(familyMastery)?'RECALL':'CONNECT';
+     const flow=buildClosingFlowEvent({musicalForm,startBeat:secondLast.startBeat,endBeat:last.endBeat,key,bpm,eventId:`event-${String(events.length-1).padStart(2,'0')}-flow`,flowAction});
      if(flow)events.splice(events.length-2,2,flow);
    }
  }
