@@ -5,6 +5,8 @@ const TEACH=['TEACHER_CALL','BUILD','COLD_READ','DELAYED_READ'];
 const LEARN=['BUILD','COLD_READ','DELAYED_READ'];
 const STAGE4_SOURCE={type:'curriculum',hamaseRef:null,analysisRef:'C / C6 / Am7 / Dm7を共有shape familyとして経験',curriculumRef:'教材の方針 rev.3 Stage 4'};
 const STAGE5_SOURCE={type:'curriculum',hamaseRef:null,analysisRef:'voice-leadingを中心にbarlineを跨いだphraseへ進む',curriculumRef:'教材の方針 rev.3 Stage 5'};
+const STAGE6_HARMONY_SOURCE={type:'hamase',hamaseRef:'ex.085',sourcePage:58,analysisRef:'ex.085 — 6度コード・チェンジの理論モデル',adaptation:'C Major pedagogical reduction; source is a theory diagram, not copied surface notation'};
+const STAGE6_LINE_SOURCE={type:'hamase',hamaseRef:'ex.269',sourcePage:234,sourceWork:'Ballade',analysisRef:'ex.269 — リニア・ラインとその構成セルによる和声の細分化',adaptation:'C-major pedagogical reduction of the line-first generator; not the original Ballade surface'};
 export const VARIANTS=[
   V('anchor-cg-01','anchor-do-sol','SEED',[N('C4',60,0,1),N('G4',67,1,1),N('C4',60,2,1),N('G4',67,3,1)],{allowedPresentation:TEACH}),
   V('anchor-gc-01','anchor-do-sol','CHANGE',[N('G4',67,0,1),N('C4',60,1,1),N('G4',67,2,1),N('C4',60,3,1)],{parentVariant:'anchor-cg-01',morphType:'CHANGE',morphTargets:[0,1,2,3],allowedPresentation:LEARN}),
@@ -26,6 +28,10 @@ export const VARIANTS=[
   V('second-dm7','second-harmonic-family','MOVE',[N('D4',62,0,1),N('F4',65,1,1),N('A4',69,2,1),N('C5',72,3,1)],{parentVariant:'second-am7',morphType:'CHANGE',morphTargets:[0,1,2,3],allowedPresentation:LEARN,allowedHarmony:['Dm7'],source:STAGE4_SOURCE}),
   V('ii-v-i-seed','ii-v-i-voice-line','SEED',[N('F4',65,0,2),N('F4',65,2,2),N('E4',64,4,4)],{allowedPresentation:TEACH,allowedHarmony:['Dm7','G7','Cmaj7'],source:STAGE5_SOURCE}),
   V('ii-v-i-grow','ii-v-i-voice-line','GROW',[N('F4',65,0,1),N('A4',69,1,1),N('F4',65,2,1),N('B4',71,3,1),N('E4',64,4,1),N('G4',67,5,1),N('E4',64,6,1),N('C4',60,7,1)],{parentVariant:'ii-v-i-seed',morphType:'CHANGE',morphTargets:[0,1,2,3,4,5,6,7],allowedPresentation:LEARN,allowedHarmony:['Dm7','G7','Cmaj7'],source:STAGE5_SOURCE}),
+  V('harmony-descent-seed','harmony-born-descent','SEED',[N('C5',72,0,1),N('B4',71,1,1),N('A4',69,2,1),N('G4',67,3,1)],{allowedPresentation:TEACH,allowedHarmony:['Cmaj7','Am7'],source:STAGE6_HARMONY_SOURCE}),
+  V('harmony-descent-grow','harmony-born-descent','GROW',[N('C5',72,0,1),N('B4',71,1,1),N('A4',69,2,1),N('G4',67,3,1),N('F4',65,4,1),N('E4',64,5,1),N('D4',62,6,1),N('C4',60,7,1)],{parentVariant:'harmony-descent-seed',morphType:'EXTEND',morphTargets:[4,5,6,7],allowedPresentation:LEARN,allowedHarmony:['Cmaj7','Am7','FMaj7','Dm7'],source:STAGE6_HARMONY_SOURCE}),
+  V('line-descent-seed','line-born-descent','SEED',[N('G4',67,0,1),N('F4',65,1,1),N('E4',64,2,1),N('D4',62,3,1)],{allowedPresentation:TEACH,allowedHarmony:['G7','Em7'],source:STAGE6_LINE_SOURCE}),
+  V('line-descent-grow','line-born-descent','GROW',[N('G4',67,0,1),N('F4',65,1,1),N('E4',64,2,1),N('D4',62,3,1),N('C4',60,4,2),N('B3',59,6,2)],{parentVariant:'line-descent-seed',morphType:'EXTEND',morphTargets:[4,5],allowedPresentation:LEARN,allowedHarmony:['G7','Em7','Cmaj7'],source:STAGE6_LINE_SOURCE}),
 ];
 export const variantById=id=>VARIANTS.find(v=>v.variantId===id)||null;
 export const variantsForFamily=familyId=>VARIANTS.filter(v=>v.familyId===familyId);
