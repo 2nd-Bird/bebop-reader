@@ -8,18 +8,26 @@ const diffIndices=(parent,current)=>{
   }
   return out;
 };
+const diffHarmonyBeats=(parent,current)=>{
+  const a=parent?.harmonyTimeline||[],b=current?.harmonyTimeline||[];
+  const map=new Map(a.map(x=>[Number(x.beat),String(x.chord)]));
+  return b.filter(x=>map.get(Number(x.beat))!==String(x.chord)).map(x=>Number(x.beat));
+};
 
 export function morphDescriptor({variant,parentVariant=null}={}){
-  if(!variant)return {active:false,type:'NONE',indices:[]};
+  if(!variant)return {active:false,type:'NONE',indices:[],harmonyBeats:[]};
   const type=variant.morphType||'NONE';
   const explicit=Array.isArray(variant.morphTargets)?variant.morphTargets:[];
   const indices=explicit.length?explicit:diffIndices(parentVariant,variant);
-  return {active:type!=='NONE'&&indices.length>0,type,indices,parentVariantId:variant.parentVariant||null};
+  const explicitHarmony=Array.isArray(variant.harmonyMorphTargets)?variant.harmonyMorphTargets:[];
+  const harmonyBeats=explicitHarmony.length?explicitHarmony:diffHarmonyBeats(parentVariant,variant);
+  const active=type!=='NONE'&&(indices.length>0||harmonyBeats.length>0);
+  return {active,type,indices,harmonyBeats,parentVariantId:variant.parentVariant||null};
 }
 
 export function applyMorphHighlight(container,descriptor,{active=true}={}){
   if(!container)return;
-  const indices=new Set(descriptor?.indices||[]);
+  const indices=new Set(descriptor?.indices||[]),harmonyBeats=new Set((descriptor?.harmonyBeats||[]).map(Number));
   container.querySelectorAll('[data-note-index]').forEach(node=>{
     const i=Number(node.dataset.noteIndex);
     const hit=active&&indices.has(i);
@@ -28,9 +36,10 @@ export function applyMorphHighlight(container,descriptor,{active=true}={}){
     node.classList.toggle('morph-extend',hit&&descriptor?.type==='EXTEND');
     node.classList.toggle('morph-change',hit&&descriptor?.type==='CHANGE');
   });
+  container.querySelectorAll('[data-harmony-beat]').forEach(node=>node.classList.toggle('morph-harmony',active&&harmonyBeats.has(Number(node.dataset.harmonyBeat))));
 }
 
 export function clearMorphHighlight(container){
   if(!container)return;
-  container.querySelectorAll('.morph-note,.morph-insert,.morph-extend,.morph-change').forEach(node=>node.classList.remove('morph-note','morph-insert','morph-extend','morph-change'));
+  container.querySelectorAll('.morph-note,.morph-insert,.morph-extend,.morph-change,.morph-harmony').forEach(node=>node.classList.remove('morph-note','morph-insert','morph-extend','morph-change','morph-harmony'));
 }
