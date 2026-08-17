@@ -23,6 +23,7 @@ export function scheduleDelayedRetry(events,missedEvent,{minGapEvents=2}={}){
   target.harmonyFieldId=missedEvent.harmonyFieldId;
   target.harmonyContext=missedEvent.harmonyContext;
   target.harmonyTimeline=(missedEvent.harmonyTimeline||[]).map(x=>({...x}));
+  target.tonalFieldId=missedEvent.tonalFieldId||null;
   target.presentationMode='DELAYED_READ';
   target.modelPolicy='NONE';
   target.morphPolicy='NONE';
