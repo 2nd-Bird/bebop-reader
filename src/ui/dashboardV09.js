@@ -1,7 +1,7 @@
 import { loadStateV3 } from '../storage-v3.js';
 import { schedulerSignals } from '../curriculum/mastery.js';
 import { STAGES, stageByNumber } from '../curriculum/stages.js';
-import { familyById, familiesForStage } from '../curriculum/phraseFamilies.js';
+import { familyById, familiesForStage } from '../curriculum/phraseFamilyRegistry.js';
 import { isFamilyMastered } from '../curriculum/mastery.js';
 
 const esc=s=>String(s??'').replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));
