@@ -1,10 +1,14 @@
-import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{STAGES,stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';import{musicalFormById}from'./musicalForms.js';
+import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{STAGES,stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';import{MUSICAL_FORMS,musicalFormById}from'./musicalForms.js';
 const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
  const famIds=new Set(),contextManagedVariantIds=new Set();
  for(const stage of STAGES){
   for(const formId of stage.unlock?.forms||[])if(!musicalFormById(formId))throw new Error(`stage ${stage.stage}: missing musical form ${formId}`);
   for(const familyId of stage.unlock?.integrationFamilyIds||[])if(!PHRASE_FAMILIES.some(f=>f.familyId===familyId))throw new Error(`stage ${stage.stage}: missing integration family ${familyId}`);
+ }
+ for(const form of MUSICAL_FORMS){
+  for(const familyId of form.integrationFamilyIds||[])if(!PHRASE_FAMILIES.some(f=>f.familyId===familyId))throw new Error(`${form.formId}: missing integration family ${familyId}`);
+  for(const slot of form.slotPrograms||[]){const family=PHRASE_FAMILIES.find(f=>f.familyId===slot.familyId),variant=variantById(slot.variantId);if(!family||!variant||variant.familyId!==family.familyId)throw new Error(`${form.formId}: bad programmed slot ${slot.familyId}/${slot.variantId}`);if(slot.movePolicy&&slot.movePolicy!=='RELATIVE_MAJOR_OF_DOMINANT')throw new Error(`${form.formId}: unknown move policy ${slot.movePolicy}`);}
  }
  for(const f of PHRASE_FAMILIES){
   if(famIds.has(f.familyId))throw new Error(`duplicate family ${f.familyId}`);famIds.add(f.familyId);
