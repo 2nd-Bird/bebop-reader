@@ -1,7 +1,8 @@
 import {musicalFormById,chordAtFormBeat} from './src/curriculum/musicalForms.js';
 import {applyFormMove,semitoneShiftForDominant} from './src/curriculum/formMoves.js';
 import {variantById} from './src/curriculum/variantRegistry.js';
-import {buildDailySessionPlan} from './src/curriculum/scheduler.js';
+import {buildDailySessionPlan,recommendedFormIdForStage14} from './src/curriculum/scheduler.js';
+import {emptyFamilyMastery,applyEventResult,cBluesFormReady} from './src/curriculum/mastery.js';
 import {sessionHarmonyPulses} from './src/audio/groove.js';
 import {createTimeline} from './src/session/timeline.js';
 
@@ -44,4 +45,19 @@ assert(groove.some(x=>x.beat===64&&x.chord==='E7')&&groove.some(x=>x.beat===72&&
 assert(groove.some(x=>x.beat===192&&x.chord==='E7'),'global form harmony repeats through chorus two');
 assert(plan.events.every(e=>!('relativeMajorQuestion' in e)&&!('analysisPrompt' in e)&&!('nameTheChord' in e)),'Relative Major remains internal generation grammar rather than a learner theory task');
 
-console.log('OK: Rhythm Changes reuses one known Relative Major Variant through E7/A7/D7/G7 by Event-time functional MOVE');
+assert(recommendedFormIdForStage14({})==='c-blues-12','Stage 14 starts with C Blues rather than skipping directly to Rhythm Changes');
+let weak=emptyFamilyMastery();
+weak=applyEventResult(weak,{familyId:'g-to-f-surfaces',variantId:'gf-cell-seed',presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:2,harmonyContext:'C7',harmonyFieldId:'form:c-blues-12:C7'},{readScore:60,stars:2},1000);
+assert(weak.coldFormContextKeys.length===0,'unsuccessful cold form read does not count as transfer evidence');
+const evidence={};
+for(const [familyId,variantId] of [['g-to-f-surfaces','gf-cell-seed'],['density-g-to-f','density-gf-seed']]){
+ let record=emptyFamilyMastery();
+ for(const [i,chord] of ['C7','F7','G7'].entries())record=applyEventResult(record,{familyId,variantId,presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:[2,5,11][i],harmonyContext:chord,harmonyFieldId:`form:c-blues-12:${chord}`},{readScore:90,stars:4},2000+i);
+ evidence[familyId]=record;
+}
+assert(cBluesFormReady(evidence),'successful I / IV / V cold transfer for both integrated families completes the C Blues form gate');
+assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes after C Blues transfer evidence');
+const autoPlan=buildDailySessionPlan({currentStage:14,familyMastery:evidence,bpm:60,eventCount:20,targetSessionBeats:320});
+assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes without requiring a manual form chooser once Blues is ready');
+
+console.log('OK: Rhythm Changes reuses one known Relative Major Variant through E7/A7/D7/G7 and unlocks only after successful C Blues form transfer');
