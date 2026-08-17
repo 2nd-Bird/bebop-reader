@@ -1,6 +1,6 @@
 const N=(pitch,midi,startBeat,duration)=>({pitch,midi,startBeat,duration,rest:false});
 const R=(startBeat,duration)=>({pitch:null,midi:null,startBeat,duration,rest:true});
-const V=(variantId,familyId,phase,notes,{parentVariant=null,morphType='NONE',morphTargets=[],allowedPresentation=['COLD_READ'],coldReadEligible=true,allowedHarmony=['C'],source=null}={})=>({variantId,familyId,phase,parentVariant,notes,rhythm:'4/4',meter:[4,4],morphType,morphTargets,allowedKeys:['C'],allowedHarmony,allowedPresentation,coldReadEligible,source});
+const V=(variantId,familyId,phase,notes,{parentVariant=null,morphType='NONE',morphTargets=[],allowedPresentation=['COLD_READ'],coldReadEligible=true,allowedHarmony=['C'],source=null,ornamentType=null,targetRole=null}={})=>({variantId,familyId,phase,parentVariant,notes,rhythm:'4/4',meter:[4,4],morphType,morphTargets,allowedKeys:['C'],allowedHarmony,allowedPresentation,coldReadEligible,source,ornamentType,targetRole});
 const TEACH=['TEACHER_CALL','BUILD','COLD_READ','DELAYED_READ'];
 const LEARN=['BUILD','COLD_READ','DELAYED_READ'];
 const STAGE4_SOURCE={type:'curriculum',hamaseRef:null,analysisRef:'C / C6 / Am7 / Dm7を共有shape familyとして経験',curriculumRef:'教材の方針 rev.3 Stage 4'};
@@ -8,6 +8,11 @@ const STAGE5_SOURCE={type:'curriculum',hamaseRef:null,analysisRef:'voice-leading
 const STAGE6_HARMONY_SOURCE={type:'hamase',hamaseRef:'ex.085',sourcePage:58,analysisRef:'ex.085 — 6度コード・チェンジの理論モデル',adaptation:'C Major pedagogical reduction; source is a theory diagram, not copied surface notation'};
 const STAGE6_LINE_SOURCE={type:'hamase',hamaseRef:'ex.269',sourcePage:234,sourceWork:'Ballade',analysisRef:'ex.269 — リニア・ラインとその構成セルによる和声の細分化',adaptation:'C-major pedagogical reduction of the line-first generator; not the original Ballade surface'};
 const STAGE7_SOURCE={type:'hamase',hamaseRef:'ex.087',sourcePage:59,sourcePages:[59,60],sourceWork:"Billie’s Bounce [take 1]",analysisRef:'ex.087 — CELLの分節と可変なsurface',adaptation:'C-major pedagogical reduction of the invariant/surface principle; source analytic chord labels are not used as sounding accompaniment'};
+const STAGE8_PASSING_SOURCE={type:'hamase',hamaseRef:'ex.001',sourcePage:21,sourceWork:'Red Cross [take 1]',analysisRef:'chordal skeletonの間へpassing toneを入れてscalar surfaceへ育てる',adaptation:'G→E C-major pedagogical reduction of the verified passing-tone operator'};
+const STAGE8_NEIGHBOR_SOURCE={type:'hamase',hamaseRef:'ex.008',sourcePage:24,sourceWork:'I Got Rhythm',analysisRef:'親音→上方刺繍→親音→下降targetというneighbor motion',adaptation:'G→E C-major pedagogical reduction of the verified upper-neighbor operator'};
+const STAGE8_APPOGGIATURA_SOURCE={type:'hamase',hamaseRef:'ex.162',sourcePage:131,sourceWork:'Night and Day',analysisRef:'C triad skeletonにEへの前打音Fを加えlineを作る',adaptation:'G→E fragment reduced from the verified C-major target-directed appoggiatura principle'};
+const STAGE8_CHROMATIC_SOURCE={type:'hamase',hamaseRef:'ex.019',sourcePage:28,sourceWork:'Thriving from a Riff [take 3]',analysisRef:'和声音へ短2度下から前打音を当てる',adaptation:'F#→G lower-semitone approach inserted inside the known G→E movement'};
+const STAGE8_TURN_SOURCE={type:'hamase',hamaseRef:'ex.032',sourcePage:34,sourcePages:[34,131],sourceWork:'Cosmic Rays [take 5]',analysisRef:'Cを軸とするd-c-b-c turn; ex.162でも同じoperatorをC Major line生成に使用',adaptation:'Short C-major pedagogical turn; surrounding Parker phrase is not copied'};
 export const VARIANTS=[
   V('anchor-cg-01','anchor-do-sol','SEED',[N('C4',60,0,1),N('G4',67,1,1),N('C4',60,2,1),N('G4',67,3,1)],{allowedPresentation:TEACH}),
   V('anchor-gc-01','anchor-do-sol','CHANGE',[N('G4',67,0,1),N('C4',60,1,1),N('G4',67,2,1),N('C4',60,3,1)],{parentVariant:'anchor-cg-01',morphType:'CHANGE',morphTargets:[0,1,2,3],allowedPresentation:LEARN}),
@@ -36,6 +41,13 @@ export const VARIANTS=[
   V('gf-cell-seed','g-to-f-surfaces','SEED',[N('G4',67,0,2),N('F4',65,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],source:STAGE7_SOURCE}),
   V('gf-cell-return','g-to-f-surfaces','GROW',[N('G4',67,0,1),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE}),
   V('gf-cell-fan','g-to-f-surfaces','DENSIFY',[N('G4',67,0,.5),N('B4',71,.5,.5),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-return',morphType:'CHANGE',morphTargets:[0,1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE}),
+  V('ge-orn-seed','ornament-to-mi','SEED',[N('G4',67,0,2),N('E4',64,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],ornamentType:'NONE',targetRole:'E4'}),
+  V('ge-orn-passing','ornament-to-mi','GROW',[N('G4',67,0,1),N('F4',65,1,1),N('E4',64,2,2)],{parentVariant:'ge-orn-seed',morphType:'INSERT',morphTargets:[1],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_PASSING_SOURCE,ornamentType:'PASSING',targetRole:'E4'}),
+  V('ge-orn-appoggiatura','ornament-to-mi','CHANGE',[N('G4',67,0,2),N('F4',65,2,1),N('E4',64,3,1)],{parentVariant:'ge-orn-passing',morphType:'CHANGE',morphTargets:[0,1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_APPOGGIATURA_SOURCE,ornamentType:'APPOGGIATURA',targetRole:'E4'}),
+  V('ge-orn-neighbor','ornament-to-mi','GROW',[N('G4',67,0,.5),N('A4',69,.5,.5),N('G4',67,1,1),N('F4',65,2,1),N('E4',64,3,1)],{parentVariant:'ge-orn-appoggiatura',morphType:'EXTEND',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_NEIGHBOR_SOURCE,ornamentType:'NEIGHBOR',targetRole:'E4'}),
+  V('ge-orn-chromatic','ornament-to-mi','CHANGE',[N('G4',67,0,.5),N('F#4',66,.5,.5),N('G4',67,1,1),N('F4',65,2,1),N('E4',64,3,1)],{parentVariant:'ge-orn-neighbor',morphType:'CHANGE',morphTargets:[1],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_CHROMATIC_SOURCE,ornamentType:'CHROMATIC_APPROACH',targetRole:'G4→E4'}),
+  V('turn-do-seed','turn-to-do','SEED',[N('D4',62,0,2),N('C4',60,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],ornamentType:'NONE',targetRole:'C4'}),
+  V('turn-do-grow','turn-to-do','GROW',[N('D4',62,0,1),N('C4',60,1,1),N('B3',59,2,1),N('C4',60,3,1)],{parentVariant:'turn-do-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_TURN_SOURCE,ornamentType:'TURN',targetRole:'C4'}),
 ];
 export const variantById=id=>VARIANTS.find(v=>v.variantId===id)||null;
 export const variantsForFamily=familyId=>VARIANTS.filter(v=>v.familyId===familyId);
