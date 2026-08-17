@@ -32,7 +32,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   const startBeat=i*16,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE',harmonyContext=family.harmonyContext||'C';
   const event={eventId:`event-${String(i+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyContext,form:'training-4',formPosition:i%4,startBeat,prepareBeat:startBeat+4,singStartBeat:startBeat+8,singEndBeat:startBeat+12,endBeat:startBeat+16,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+4;}
-  if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
+  if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],harmonyBeats:[...(variant.harmonyMorphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,base);return event;
  });
  return{...base,events,focusFamilyIds:families.map(f=>f.familyId)};
