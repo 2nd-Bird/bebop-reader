@@ -1,20 +1,32 @@
-import {familiesForStage} from './phraseFamilies.js';
+import {familiesForStage,familyById} from './phraseFamilies.js';
+import {variantById} from './variants.js';
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
-export const emptyFamilyMastery=()=>({reading:0,coldRead:0,attempts:0,coldReadAttempts:0,successes:0,lastSeenAt:null,lastColdReadAt:null,dueAt:null});
+export const emptyFamilyMastery=()=>({familyId:null,reading:0,coldRead:0,attempts:0,coldReadAttempts:0,successes:0,lastSeenAt:null,lastColdReadAt:null,dueAt:null,seenVariantIds:[],coldVariantIds:[]});
 const qualityOf=r=>clamp(((r?.readScore??(.7*(r?.pitch||0)+.2*(r?.flow||0)+.1*(r?.time||0)))/100));
+const uniq=a=>[...new Set((a||[]).filter(Boolean))];
 export function applyEventResult(record,event,result,now=Date.now()){
  const prev={...emptyFamilyMastery(),...(record||{})},q=qualityOf(result),cold=['COLD_READ','DELAYED_READ'].includes(event?.presentationMode);
  const attempts=prev.attempts+1,reading=prev.attempts?prev.reading*.72+q*.28:q;
  let coldRead=prev.coldRead,coldReadAttempts=prev.coldReadAttempts,lastColdReadAt=prev.lastColdReadAt;
- if(cold){coldRead=prev.coldReadAttempts?prev.coldRead*.62+q*.38:q;coldReadAttempts++;lastColdReadAt=now;}
+ const seenVariantIds=uniq([...(prev.seenVariantIds||[]),event?.variantId]);
+ let coldVariantIds=uniq(prev.coldVariantIds||[]);
+ if(cold){coldRead=prev.coldReadAttempts?prev.coldRead*.62+q*.38:q;coldReadAttempts++;lastColdReadAt=now;coldVariantIds=uniq([...coldVariantIds,event?.variantId]);}
  const basis=cold?coldRead:reading,days=basis<.6?1:basis<.78?2:basis<.9?4:7;
- return{...prev,reading:clamp(reading),coldRead:clamp(coldRead),attempts,coldReadAttempts,successes:prev.successes+(result?.stars>=3?1:0),lastSeenAt:now,lastColdReadAt,dueAt:now+days*86400000};
+ return{...prev,familyId:event?.familyId||prev.familyId,reading:clamp(reading),coldRead:clamp(coldRead),attempts,coldReadAttempts,successes:prev.successes+(result?.stars>=3?1:0),lastSeenAt:now,lastColdReadAt,dueAt:now+days*86400000,seenVariantIds,coldVariantIds};
 }
-export const isFamilyMastered=r=>!!r&&r.coldReadAttempts>=2&&r.coldRead>=.78&&r.reading>=.75;
+function requiredColdVariants(familyId){
+ const family=familyById(familyId);if(!family)return[];
+ return family.variants.filter(id=>variantById(id)?.coldReadEligible!==false);
+}
+export function isFamilyMastered(r,familyId=r?.familyId){
+ if(!r)return false;
+ const required=requiredColdVariants(familyId),coldSet=new Set(r.coldVariantIds||[]),coverage=required.length?required.every(id=>coldSet.has(id)):r.coldReadAttempts>=2;
+ return coverage&&r.coldReadAttempts>=Math.max(2,required.length)&&r.coldRead>=.78&&r.reading>=.75;
+}
 export function deriveStageProgress(familyMastery,currentStage=0,maxStage=3){
  let stage=clamp(Number(currentStage)||0,0,maxStage),advanced=false;
  const required=familiesForStage(stage);
- if(required.length&&required.every(f=>isFamilyMastered(familyMastery?.[f.familyId]))&&stage<maxStage){stage++;advanced=true;}
+ if(required.length&&required.every(f=>isFamilyMastered(familyMastery?.[f.familyId],f.familyId))&&stage<maxStage){stage++;advanced=true;}
  return{currentStage:stage,unlockedStages:Array.from({length:stage+1},(_,i)=>i),advanced};
 }
 export function schedulerSignals(state,now=Date.now()){
