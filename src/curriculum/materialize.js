@@ -3,7 +3,12 @@ export function harmonyTimelineFor(variant,event,totalBeats=4){
  const out=raw.map(x=>({beat:Number(x.beat),chord:String(x.chord||'').trim()})).sort((a,b)=>a.beat-b.beat);
  if(!out.length||out[0].beat!==0)throw new Error(`${variant?.variantId||'score'}: harmony timeline must start at beat 0`);
  let prev=-1;
- for(const x of out){if(!Number.isFinite(x.beat)||x.beat<0||x.beat>=totalBeats||!x.chord)throw new Error(`${variant?.variantId||'score'}: invalid harmony timeline`);if(x.beat<=prev)throw new Error(`${variant?.variantId||'score'}: harmony beats must increase`);prev=x.beat;}
+ for(const x of out){
+  if(!Number.isFinite(x.beat)||x.beat<0||x.beat>=totalBeats||!x.chord)throw new Error(`${variant?.variantId||'score'}: invalid harmony timeline`);
+  if(x.beat<=prev)throw new Error(`${variant?.variantId||'score'}: harmony beats must increase`);
+  if(variant?.allowedHarmony?.length&&!variant.allowedHarmony.includes(x.chord))throw new Error(`${variant.variantId}: harmony ${x.chord} is not allowed`);
+  prev=x.beat;
+ }
  return out;
 }
 export function materializeScoreModel(variant,event,sessionPlan){
