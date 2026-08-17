@@ -25,6 +25,16 @@ export function renderV09Home({app,navigate}){
   const root=shell(app,`<section class="hero v09-hero"><div class="eyebrow">TODAY · CONTINUOUS SESSION</div><h1>音楽を止めずに、<br><em>読む。</em></h1><p>聴く → 見る → 頭で鳴らす → 歌う。失敗しても流れは止めず、あとで同じ動きへ戻る。</p></section><section class="today-card card v09-today"><div class="today-top"><div><span class="label">STAGE ${x.stageNo} · ${esc(x.stage.title)}</span><h2>${esc(focusText)}</h2></div><div class="tempo-badge"><span>♩</span><b>60</b></div></div><div class="v09-flow-strip"><span>LISTEN</span><i>→</i><span>SEE</span><i>→</i><span>SING</span><i>→</i><span>FLOW</span></div><div class="v09-gate"><small>次にできること</small><b>${esc(x.stage.gate)}</b></div><button class="primary big" id="v09-start">セッションを始める <span>→</span></button><small class="v09-duration">約5分 · 音楽は止まりません</small></section><section class="metrics-grid"><div class="metric card"><span>STREAK</span><b>${state.streak||0}<small>日</small></b><em>${state.totalSessions||0} sessions</em></div><div class="metric card"><span>READINESS</span><b>${x.readiness}<small>%</small></b><em>${x.due.length?`${x.due.length} review due`:'on track'}</em></div></section>${last?`<section class="card v09-last"><span class="label">LAST SESSION</span><div><b>${last.stars||0}★</b><span>Reading ${last.readScore??'—'}</span><span>Pitch ${last.pitch??'—'}</span><span>Flow ${last.flow??'—'}</span></div></section>`:''}<section class="locked-worlds"><div class="world active"><b>C</b><span>Major</span><small>NOW</small></div><div class="world"><b>F</b><span>Major</span><small>LATER</small></div><div class="world"><b>B♭</b><span>Major</span><small>LATER</small></div></section>`,{active:'home'});
   bindNav(root,navigate);root.querySelector('#v09-start').onclick=()=>navigate('/session');
 }
+export function renderV09Library({app,navigate}){
+  const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]);
+  const sections=STAGES.map(stage=>{
+    const open=unlocked.has(stage.stage)||stage.stage===current,families=familiesForStage(stage.stage);
+    const rows=families.map(f=>`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(f.title)}</b><small>${open?'五線譜から歌って身につける動き':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${open?'READ · SING':'LOCKED'}</span></div></div>`).join('');
+    return`<section class="v09-family-list"><div class="group-head"><div><span class="eyebrow">STAGE ${stage.stage}</span><h2>${esc(stage.title)}</h2><small>${esc(stage.gate)}</small></div></div>${rows}</section>`;
+  }).join('');
+  const root=shell(app,`<section class="page-title"><span class="eyebrow">CURRICULUM · C</span><h1>歌って身につける順番。</h1><p>理論問題ではなく、普通の譜面が少しずつ育っていきます。</p></section>${sections}`,{active:'library'});
+  bindNav(root,navigate);
+}
 export function renderV09Progress({app,navigate}){
   const state=loadStateV3(),x=currentSnapshot(state);
   const stageNodes=STAGES.map(s=>{const unlocked=(state.stageProgress?.unlockedStages||[0]).includes(s.stage),active=s.stage===x.stageNo;return`<div class="v09-stage-node ${active?'active':unlocked?'done':'locked'}"><span>0${s.stage+1}</span><div><b>${esc(s.title)}</b><small>${esc(s.gate)}</small></div><em>${active?'CURRENT':unlocked?'OPEN':'LOCKED'}</em></div>`}).join('<i class="v09-stage-link"></i>');
