@@ -36,7 +36,7 @@ export function createSessionView({ app, navigate }) {
     clearScore() { currentEvent = null; currentScoreModel = null; clearMorphHighlight(score); morph.classList.add('hidden'); score.innerHTML = ''; playhead.classList.remove('active'); empty.classList.remove('hidden'); },
     showEvent(event, scoreModel) {
       currentEvent = event; currentScoreModel = scoreModel; empty.classList.add('hidden'); renderNotation(score, scoreModel); resetFollower(score, viewport, playhead, scoreModel); playhead.classList.add('active');
-      if(event.morph?.active){ morph.textContent=`GROW · ${event.morph.type}`; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); } else morph.classList.add('hidden');
+      if(event.morph?.active){ morph.textContent=event.morph.type==='REHARMONIZE'?'REHEAR · HARMONY':`GROW · ${event.morph.type}`; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); } else morph.classList.add('hidden');
     },
     setPhase(name) { const [label, sub] = phaseCopy[name] || [name, '']; phase.innerHTML = `<span class="pulse-dot ${name === 'SING' ? 'live' : name === 'AUDIATE' ? 'gold' : name==='MODEL'||name==='ECHO' ? 'model' : ''}"></span><b>${label}</b><small>${sub}</small>`; document.body.classList.toggle('attempting', name === 'SING'); },
     update({ beat, bar, beatInBar, totalBeats, progress: noteProgress, event, phase: phaseName, audio = null }) {
