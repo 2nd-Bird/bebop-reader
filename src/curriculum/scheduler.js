@@ -3,6 +3,7 @@ import{variantById}from'./variantRegistry.js';
 import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
+import{cBluesFormReady}from'./mastery.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
 
@@ -57,11 +58,13 @@ function buildProgramSlots(form,eventCount){
  }
  return out;
 }
+export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesFormReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
 
 export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},harmonyFieldOverrides={},formId=null}={}){
  validateCurriculum();
- const musicalForm=currentStage>=14?musicalFormById(formId||'c-blues-12'):null;
- if(currentStage>=14&&!musicalForm)throw new Error(`unknown musical form ${formId||'c-blues-12'}`);
+ const resolvedFormId=currentStage>=14?recommendedFormIdForStage14(familyMastery,formId):null;
+ const musicalForm=currentStage>=14?musicalFormById(resolvedFormId):null;
+ if(currentStage>=14&&!musicalForm)throw new Error(`unknown musical form ${resolvedFormId}`);
  if(musicalForm&&musicalForm.status!=='ACTIVE')throw new Error(`${musicalForm.formId} is defined but not active yet`);
  const programmedFamilyIds=musicalForm?.slotPrograms?.length?uniq(musicalForm.slotPrograms.map(x=>x.familyId)):[];
  const families=programmedFamilyIds.length?programmedFamilyIds.map(familyById).filter(Boolean):chooseFamilies({currentStage,dueFamilyIds,weakFamilyIds,preferredFamilyIds:musicalForm?.integrationFamilyIds||[]});
