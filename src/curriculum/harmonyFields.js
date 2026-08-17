@@ -6,3 +6,8 @@ export const HARMONY_FIELDS=[
   {harmonyFieldId:'ii-v-i-c-2bar',title:'ii–V–I in C',timeline:[{beat:0,chord:'Dm7'},{beat:2,chord:'G7'},{beat:4,chord:'Cmaj7'}]},
 ];
 export const harmonyFieldById=id=>HARMONY_FIELDS.find(x=>x.harmonyFieldId===id)||null;
+const chordSignature=timeline=>timeline.map(x=>x.chord).join('|');
+export function defaultHarmonyFieldFor(allowedHarmony=['C']){
+  const signature=(allowedHarmony||[]).join('|');
+  return HARMONY_FIELDS.find(field=>chordSignature(field.timeline)===signature)||null;
+}
