@@ -1,5 +1,5 @@
 import {familiesForStage,familyById} from './phraseFamilies.js';
-import {variantById} from './variants.js';
+import {variantById} from './variantRegistry.js';
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 export const emptyFamilyMastery=()=>({familyId:null,reading:0,coldRead:0,attempts:0,coldReadAttempts:0,successes:0,lastSeenAt:null,lastColdReadAt:null,dueAt:null,seenVariantIds:[],coldVariantIds:[],coldHarmonyFieldIds:[],coldVariantHarmonyKeys:[]});
 const qualityOf=r=>clamp(((r?.readScore??(.7*(r?.pitch||0)+.2*(r?.flow||0)+.1*(r?.time||0)))/100));
