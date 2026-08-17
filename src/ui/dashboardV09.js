@@ -1,0 +1,35 @@
+import { loadStateV3 } from '../storage-v3.js';
+import { schedulerSignals } from '../curriculum/mastery.js';
+import { STAGES, stageByNumber } from '../curriculum/stages.js';
+import { familyById, familiesForStage } from '../curriculum/phraseFamilies.js';
+import { isFamilyMastered } from '../curriculum/mastery.js';
+
+const esc=s=>String(s??'').replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));
+const pct=n=>Math.round(Math.max(0,Math.min(1,Number(n)||0))*100);
+
+function bindNav(root,navigate){root.querySelectorAll('[data-v09-nav]').forEach(el=>el.onclick=()=>navigate(el.dataset.v09Nav));}
+function shell(app,html,{active='home'}={}){
+  app.innerHTML=`<div class="app-shell home-v09"><header class="topbar"><button class="brand" data-v09-nav="/"><span class="brand-mark">B</span><span><b>Bebop Reader</b><small>READ → SING → FLOW</small></span></button><div class="key-pill"><span>KEY</span><b>C</b></div></header><main>${html}</main><nav class="bottom-nav">${[['home','/','今日','◉'],['library','/library','教材','▤'],['progress','/progress','進捗','◫'],['settings','/settings','設定','⚙']].map(([id,path,label,icon])=>`<button data-v09-nav="${path}" class="${active===id?'active':''}"><span>${icon}</span><small>${label}</small></button>`).join('')}</nav><div class="build-tag">v0.9</div></div>`;
+  return app.querySelector('.home-v09');
+}
+function familyMetric(record){if(!record?.attempts)return 0;const reading=Number(record.reading)||0,cold=record.coldReadAttempts?Number(record.coldRead)||0:0;return pct(reading*.45+cold*.55);}
+function currentSnapshot(state){
+  const stageNo=state.stageProgress?.currentStage??0,stage=stageByNumber(stageNo)||STAGES[0],families=familiesForStage(stageNo),signals=schedulerSignals(state),due=signals.dueFamilyIds.map(familyById).filter(Boolean),weak=signals.weakFamilyIds.map(familyById).filter(Boolean);
+  const focus=[...due,...weak,...families].filter((f,i,a)=>f&&a.findIndex(x=>x.familyId===f.familyId)===i).slice(0,2);
+  const readiness=families.length?Math.round(families.reduce((sum,f)=>sum+familyMetric(state.familyMastery?.[f.familyId]),0)/families.length):0;
+  return{stageNo,stage,families,due,weak,focus,readiness};
+}
+export function renderV09Home({app,navigate}){
+  const state=loadStateV3(),x=currentSnapshot(state),last=state.lastSessionResult;
+  const focusText=x.focus.length?x.focus.map(f=>f.title).join(' · '):x.stage.title;
+  const root=shell(app,`<section class="hero v09-hero"><div class="eyebrow">TODAY · CONTINUOUS SESSION</div><h1>音楽を止めずに、<br><em>読む。</em></h1><p>Teacher Call → 見る → 頭で鳴らす → 歌う。失敗しても流れは止めず、あとで同じFamilyへ戻る。</p></section><section class="today-card card v09-today"><div class="today-top"><div><span class="label">STAGE ${x.stageNo} · ${esc(x.stage.title)}</span><h2>${esc(focusText)}</h2></div><div class="tempo-badge"><span>♩</span><b>60</b></div></div><div class="v09-flow-strip"><span>CALL</span><i>→</i><span>SEE</span><i>→</i><span>SING</span><i>→</i><span>FLOW</span></div><div class="v09-gate"><small>NEXT GATE</small><b>${esc(x.stage.gate)}</b></div><button class="primary big" id="v09-start">セッションを始める <span>→</span></button><small class="v09-duration">約5分20秒 · 20 learning events</small></section><section class="metrics-grid"><div class="metric card"><span>STREAK</span><b>${state.streak||0}<small>日</small></b><em>${state.totalSessions||0} sessions</em></div><div class="metric card"><span>STAGE READINESS</span><b>${x.readiness}<small>%</small></b><em>${x.due.length?`${x.due.length} review due`:'on track'}</em></div></section>${last?`<section class="card v09-last"><span class="label">LAST SESSION</span><div><b>${last.stars||0}★</b><span>Reading ${last.readScore??'—'}</span><span>Pitch ${last.pitch??'—'}</span><span>Flow ${last.flow??'—'}</span></div></section>`:''}<section class="locked-worlds"><div class="world active"><b>C</b><span>Major</span><small>NOW</small></div><div class="world"><b>F</b><span>Major</span><small>LATER</small></div><div class="world"><b>B♭</b><span>Major</span><small>LATER</small></div></section>`,{active:'home'});
+  bindNav(root,navigate);root.querySelector('#v09-start').onclick=()=>navigate('/session');
+}
+export function renderV09Progress({app,navigate}){
+  const state=loadStateV3(),x=currentSnapshot(state);
+  const stageNodes=STAGES.map(s=>{const unlocked=(state.stageProgress?.unlockedStages||[0]).includes(s.stage),active=s.stage===x.stageNo;return`<div class="v09-stage-node ${active?'active':unlocked?'done':'locked'}"><span>0${s.stage+1}</span><div><b>${esc(s.title)}</b><small>${esc(s.gate)}</small></div><em>${active?'CURRENT':unlocked?'OPEN':'LOCKED'}</em></div>`}).join('<i class="v09-stage-link"></i>');
+  const allFamilies=STAGES.flatMap(s=>familiesForStage(s.stage));
+  const familyRows=allFamilies.map(f=>{const record=state.familyMastery?.[f.familyId],unlocked=f.stage<=x.stageNo,mastered=isFamilyMastered(record);return`<div class="v09-family-row ${unlocked?'':'locked'}"><div><b>${esc(f.title)}</b><small>Stage ${f.stage} · ${record?.attempts||0} attempts · ${record?.coldReadAttempts||0} cold</small></div><div class="v09-family-score"><span>${mastered?'MASTERED':unlocked?`${familyMetric(record)}%`:'—'}</span><div><i style="width:${unlocked?familyMetric(record):0}%"></i></div></div></div>`}).join('');
+  const root=shell(app,`<section class="page-title"><span class="eyebrow">FAMILY MASTERY</span><h1>ジャズの線へ進む。</h1><p>Stageは問題数ではなく、同じPhrase FamilyをCold Readで読めるかで進む。</p></section><section class="mastery-hero card"><div class="big-number">${x.readiness}<small>%</small></div><div><span>STAGE ${x.stageNo}</span><h2>${esc(x.stage.title)}</h2><p>${esc(x.stage.gate)}</p></div></section><div class="v09-stage-map">${stageNodes}</div><section class="v09-family-list"><div class="group-head"><div><h2>Phrase Families</h2><small>${x.due.length} due · ${x.weak.length} weak</small></div></div>${familyRows}</section>`,{active:'progress'});
+  bindNav(root,navigate);
+}
