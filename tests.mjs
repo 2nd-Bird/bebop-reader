@@ -11,6 +11,8 @@ import {VARIANTS,variantById} from './src/curriculum/variants.js';
 import {validateCurriculum} from './src/curriculum/validate.js';
 import {buildDailySessionPlan} from './src/curriculum/scheduler.js';
 import {findEchoSlot,scheduleDelayedRetry} from './src/curriculum/recovery.js';
+import {emptyFamilyMastery,applyEventResult,isFamilyMastered,deriveStageProgress,schedulerSignals} from './src/curriculum/mastery.js';
+import {migrateV2State} from './src/storage-v3.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
 assert(EXERCISES.length>=24,'need >=24 exercises');
@@ -79,4 +81,17 @@ const md=morphDescriptor({variant:v,parentVariant:parent});assert(md.active&&md.
 const missed=curriculumPlan.events[0],echo=findEchoSlot(curriculumPlan.events,missed,new Set());assert(echo&&echo.startBeat>=missed.endBeat+16,'answer echo delayed beyond next event');
 const retry=scheduleDelayedRetry(curriculumPlan.events,missed,{minGapEvents:2});assert(retry&&retry.variantId===missed.variantId&&retry.presentationMode==='DELAYED_READ','delayed retry');assert(retry.startBeat>=missed.startBeat+48,'retry gap');
 
-console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; scoring ${sc.pitch}/${sc.time}/${sc.flow}; transport + curriculum + teaching loop OK`);
+const migrated=migrateV2State({streak:4,lastPracticeDate:'2026-08-16',settings:{latencyMs:123,solfege:true},mastery:{p01:5}});
+assert(migrated.streak===4&&migrated.settings.latencyMs===123&&migrated.settings.solfege===true,'v2 settings migration');
+assert(Object.keys(migrated.familyMastery).length===0,'legacy exercise mastery must not grant family mastery');
+let fm=emptyFamilyMastery();
+const coldEvent={familyId:'anchor-do-sol',presentationMode:'COLD_READ'};
+fm=applyEventResult(fm,coldEvent,{readScore:96,stars:5},1000);fm=applyEventResult(fm,coldEvent,{readScore:94,stars:5},2000);
+assert(isFamilyMastered(fm),'family mastery gate');
+assert(deriveStageProgress({'anchor-do-sol':fm},0).currentStage===1,'stage 0 unlock');
+const adaptiveState={familyMastery:{'anchor-do-sol':fm},reviewQueue:[{familyId:'anchor-do-sol',dueAt:1}]};
+const signals=schedulerSignals(adaptiveState,3000),adaptivePlan=buildDailySessionPlan({currentStage:0,eventCount:8,...signals});
+assert(signals.dueFamilyIds.includes('anchor-do-sol'),'due family signal');
+assert(adaptivePlan.events[0].presentationMode==='COLD_READ','known due family must start cold');
+
+console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; scoring ${sc.pitch}/${sc.time}/${sc.flow}; transport + curriculum + teaching + mastery/storage v3 OK`);
