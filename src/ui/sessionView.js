@@ -10,7 +10,7 @@ const phaseCopy = {
   SING: ['SING', '止まらず、その場所で歌う'],
   FEEDBACK: ['FLOW', '音楽は続く'],
 };
-const morphCopy={INSERT:'間を埋める',EXTEND:'少し伸びる',CHANGE:'少し変わる'};
+const morphCopy={INSERT:'間を埋める',EXTEND:'少し伸びる',CHANGE:'少し変わる',DENSIFY:'少し細かく'};
 const starsHTML = n => `<div class="star-row" aria-label="${n} of 5 stars">${[1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}">★</span>`).join('')}</div>`;
 
 export function createSessionView({ app, navigate }) {
@@ -37,7 +37,9 @@ export function createSessionView({ app, navigate }) {
     clearScore() { currentEvent = null; currentScoreModel = null; clearMorphHighlight(score); morph.classList.add('hidden'); score.innerHTML = ''; playhead.classList.remove('active'); empty.classList.remove('hidden'); },
     showEvent(event, scoreModel) {
       currentEvent = event; currentScoreModel = scoreModel; empty.classList.add('hidden'); renderNotation(score, scoreModel); resetFollower(score, viewport, playhead, scoreModel); playhead.classList.add('active');
-      if(event.morph?.active){ morph.textContent=morphCopy[event.morph.type]||'少し変わる'; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); } else morph.classList.add('hidden');
+      if(event.presentationMode==='FLOW'){morph.textContent=event.flowAction==='CONNECT'?'4小節つなげる':'続けて歌う';morph.classList.remove('hidden');}
+      else if(event.morph?.active){ morph.textContent=morphCopy[event.morph.type]||'少し変わる'; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); }
+      else morph.classList.add('hidden');
     },
     setPhase(name) { const [label, sub] = phaseCopy[name] || [name, '']; phase.innerHTML = `<span class="pulse-dot ${name === 'SING' ? 'live' : name === 'AUDIATE' ? 'gold' : name==='MODEL'||name==='ECHO' ? 'model' : ''}"></span><b>${label}</b><small>${sub}</small>`; document.body.classList.toggle('attempting', name === 'SING'); },
     update({ beat, bar, beatInBar, totalBeats, progress: noteProgress, event, phase: phaseName, audio = null }) {
