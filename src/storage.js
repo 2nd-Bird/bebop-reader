@@ -1,4 +1,5 @@
 import { EXERCISES } from './exercises.js';
+import { mutateV3 } from './storage-v3.js';
 const KEY='bebop-reader-state-v2';
 const defaults={
   mastery:{}, attempts:{}, streak:0,lastPracticeDate:null,totalAttempts:0,
@@ -31,6 +32,10 @@ export function recordAttempt(exercise,result){
     s.lastResult={...result,exerciseId:exercise.id,at:Date.now()};
   });
 }
-export function setSettings(patch){return mutate(s=>Object.assign(s.settings,patch));}
+export function setSettings(patch){
+  const legacy=mutate(s=>Object.assign(s.settings,patch));
+  try{mutateV3(s=>Object.assign(s.settings,patch));}catch{}
+  return legacy;
+}
 export function cMastery(){const s=loadState();return EXERCISES.length?Math.round(EXERCISES.reduce((a,e)=>a+(s.mastery[e.id]||0),0)/(5*EXERCISES.length)*100):0;}
 export const storageKey=KEY;
