@@ -20,7 +20,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
   function scheduleRecovery(event,result){
     if(!event||!result||result.stars>=3)return;
     const echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
-    if(echoSlot){occupiedEchoSlots.add(echoSlot.eventId);modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.105,type:'triangle'}));echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});}
+    if(echoSlot){occupiedEchoSlots.add(echoSlot.eventId);modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.18,type:'triangle'}));echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});}
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
   }
 
@@ -47,7 +47,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       const countInBeats = plan.countInBars * plan.beatsPerBar;
       const countNo = Math.max(1, Math.min(countInBeats, Math.floor(beat) + countInBeats + 1));
       view.setCount(countNo); if (lastPhase !== 'COUNT_IN') { lastPhase = 'COUNT_IN'; view.setPhase('SPACE'); }
-      view.update({ beat, bar: 0, beatInBar: countNo, totalBeats: plan.totalBeats, progress: 0, event: null, phase: 'COUNT_IN' });
+      view.update({ beat, bar: 0, beatInBar: countNo, totalBeats: plan.totalBeats, progress: 0, event: null, phase: 'COUNT_IN', audio: grooveStop?.status?.() || null });
       raf = requestAnimationFrame(frame); return;
     }
     view.setCount(null);
@@ -59,7 +59,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     if (phase !== lastPhase) { lastPhase = phase; view.setPhase(phase); }
     if (event && beat >= event.singEndBeat && !scored.has(event.eventId)) { const result = scoreOne(event); if (result) view.showFeedback(result); }
     const noteProgress = event ? clamp01((beat - event.singStartBeat) / (event.singEndBeat - event.singStartBeat)) : 0;
-    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event, phase });
+    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event, phase, audio: grooveStop?.status?.() || null });
     raf = requestAnimationFrame(frame);
   }
 
@@ -70,9 +70,15 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
         view.setStarting(); await Promise.all([ensureAudio(), initMic()]);
         const ctx = getAudioContext(); transport = createTransport({ audioContext: ctx, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
         const countInBeats = plan.countInBars * plan.beatsPerBar, origin = ctx.currentTime + countInBeats * transport.secondsPerBeat + 0.12;
-        transport.startAt(origin); scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 }); await startSessionCapture();
-        grooveStop = startGroove({ transport, key: plan.key });
-        for(const event of timeline.events) if(event.modelPolicy==='TEACHER_CALL') modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:event.modelStartBeat,volume:.1}));
+        transport.startAt(origin);
+        scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });
+
+        // Prime all deterministic output before starting the analysis loop. This is important on iOS:
+        // Web Audio events survive main-thread jitter, while short JS scheduling timers do not.
+        grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, primeBeats: 16, lookaheadSec: 8 });
+        for(const event of timeline.events) if(event.modelPolicy==='TEACHER_CALL') modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:event.modelStartBeat,volume:.18,type:'triangle'}));
+
+        await startSessionCapture();
         view.setRunning(); running = true; raf = requestAnimationFrame(frame);
       } catch (error) { running = false; grooveStop?.(); modelStops.forEach(stop=>stop?.()); stopSessionCapture(); stopMic(); view.showError(error); }
     },
