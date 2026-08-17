@@ -14,13 +14,14 @@ export function saveStateV3(state){localStorage.setItem(KEY,JSON.stringify(state
 export function mutateV3(fn){const s=loadStateV3();fn(s);saveStateV3(s);return s;}
 const todayTokyo=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function rebuildReviewQueue(s){s.reviewQueue=Object.entries(s.familyMastery||{}).filter(([,r])=>r?.dueAt).map(([familyId,r])=>({familyId,dueAt:r.dueAt,reason:r.coldReadAttempts<2?'cold-read':'spaced-review'})).sort((a,b)=>a.dueAt-b.dueAt);}
-export function beginSessionV3(plan){return mutateV3(s=>{s.currentSession={sessionId:plan.sessionId,startedAt:Date.now(),stage:plan.stage??s.stageProgress.currentStage,key:plan.key,focusFamilyIds:plan.focusFamilyIds||[]};});}
+export function beginSessionV3(plan){return mutateV3(s=>{s.currentSession={sessionId:plan.sessionId,startedAt:Date.now(),stage:plan.stage??s.stageProgress.currentStage,key:plan.key,focusFamilyIds:plan.focusFamilyIds||[],musicalFormId:plan.musicalFormId||null};});}
 export function recordSessionEventV3(event,result){return mutateV3(s=>{
- const now=Date.now(),id=event.familyId;s.familyMastery[id]=applyEventResult(s.familyMastery[id],event,result,now);
- const v=s.variantHistory[event.variantId]||{attempts:0};s.variantHistory[event.variantId]={...v,attempts:v.attempts+1,lastSeenAt:now,lastMode:event.presentationMode,lastReadScore:result.readScore??null,lastStars:result.stars??0};rebuildReviewQueue(s);
+ const now=Date.now(),id=event.familyId;if(id)s.familyMastery[id]=applyEventResult(s.familyMastery[id],event,result,now);
+ if(event.variantId){const v=s.variantHistory[event.variantId]||{attempts:0};s.variantHistory[event.variantId]={...v,attempts:v.attempts+1,lastSeenAt:now,lastMode:event.presentationMode,lastReadScore:result.readScore??null,lastStars:result.stars??0};}
+ rebuildReviewQueue(s);
  });}
 export function completeSessionV3(plan,summary){return mutateV3(s=>{
  const today=todayTokyo();if(s.lastPracticeDate!==today){if(s.lastPracticeDate){const d=(new Date(today)-new Date(s.lastPracticeDate))/86400000;s.streak=d===1?s.streak+1:1;}else s.streak=1;s.lastPracticeDate=today;}
- s.totalSessions=(s.totalSessions||0)+1;s.lastSessionResult={...summary,sessionId:plan.sessionId,completedAt:Date.now(),focusFamilyIds:plan.focusFamilyIds||[]};s.currentSession=null;s.stageProgress=deriveStageProgress(s.familyMastery,s.stageProgress.currentStage,STAGES.length-1);rebuildReviewQueue(s);
+ s.totalSessions=(s.totalSessions||0)+1;s.lastSessionResult={...summary,sessionId:plan.sessionId,completedAt:Date.now(),focusFamilyIds:plan.focusFamilyIds||[],musicalFormId:plan.musicalFormId||null};s.currentSession=null;s.stageProgress=deriveStageProgress(s.familyMastery,s.stageProgress.currentStage,STAGES.length-1);rebuildReviewQueue(s);
  });}
 export const storageKeyV3=KEY;
