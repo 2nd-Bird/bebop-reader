@@ -1,4 +1,4 @@
-import{familiesForStage,familiesThroughStage,familyById}from'./phraseFamilies.js';import{variantById}from'./variants.js';import{materializeScoreModel}from'./materialize.js';import{validateCurriculum}from'./validate.js';
+import{familiesForStage,familiesThroughStage,familyById}from'./phraseFamilies.js';import{variantById}from'./variants.js';import{harmonyFieldById}from'./harmonyFields.js';import{materializeScoreModel}from'./materialize.js';import{validateCurriculum}from'./validate.js';
 const uniq=a=>[...new Set(a.filter(Boolean))];
 const variantBeats=v=>Math.max(4,...v.notes.map(n=>n.startBeat+n.duration));
 function chooseFamilies({currentStage,dueFamilyIds=[],weakFamilyIds=[]}){
@@ -30,10 +30,10 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  const slots=buildSlots(families,eventCount,{familyMastery,dueFamilyIds});
  const base={sessionId:`stage-${currentStage}-${Date.now()}`,stage:currentStage,bpm,key,form:'training-4',beatsPerBar:4,countInBars:1,totalBars:eventCount*4,totalBeats:eventCount*16};
  const events=slots.map(({family,variant,mode},i)=>{
-  const startBeat=i*16,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE',harmonyContext=family.harmonyContext||'C',scoreBeats=variantBeats(variant);
-  if(scoreBeats>8)throw new Error(`${variant.variantId}: training-4 supports score phrases up to 8 beats`);
-  const longPhrase=scoreBeats>4,singStartBeat=startBeat+8,singEndBeat=singStartBeat+scoreBeats,prepareBeat=longPhrase?(isTeacher?startBeat+scoreBeats:startBeat):startBeat+4;
-  const event={eventId:`event-${String(i+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyContext,form:'training-4',formPosition:i%4,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat:startBeat+16,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const startBeat=i*16,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE',scoreBeats=variantBeats(variant),harmonyField=harmonyFieldById(variant.harmonyFieldId||'static-c');
+  if(scoreBeats>8)throw new Error(`${variant.variantId}: training-4 supports score phrases up to 8 beats`);if(!harmonyField)throw new Error(`${variant.variantId}: harmony field not found`);
+  const longPhrase=scoreBeats>4,singStartBeat=startBeat+8,singEndBeat=singStartBeat+scoreBeats,prepareBeat=longPhrase?(isTeacher?startBeat+scoreBeats:startBeat):startBeat+4,harmonyTimeline=harmonyField.timeline.map(x=>({...x})),harmonyContext=harmonyTimeline[0]?.chord||'C';
+  const event={eventId:`event-${String(i+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyFieldId:harmonyField.harmonyFieldId,harmonyContext,harmonyTimeline,form:'training-4',formPosition:i%4,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat:startBeat+16,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+scoreBeats;}
   if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,base);return event;
