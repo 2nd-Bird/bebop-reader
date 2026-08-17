@@ -1,4 +1,4 @@
-import{familiesForStage,familiesThroughStage,familyById}from'./phraseFamilies.js';
+import{familiesForStage,familiesThroughStage,familyById}from'./phraseFamilyRegistry.js';
 import{variantById}from'./variantRegistry.js';
 import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 import{tonalFieldById}from'./tonalFields.js';
