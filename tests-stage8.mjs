@@ -51,10 +51,19 @@ assert(variantById('turn-do-grow').ornamentType==='TURN','turn metadata');
 assert(variantById('turn-do-grow').parentVariant==='turn-do-seed','turn grows from direct D→C target');
 assert(turn.variants.every(id=>variantById(id).allowedHarmony.join(',')==='C'),'turn theory does not create extra sounding harmony');
 
+// Experience → Recognition → Naming: internal analysis terms must not leak into user-facing Family labels.
+const forbiddenTitleTerms=['ornament','passing','neighbor','appoggiatura','turn','chromatic','surface','cell'];
+for(const family of [ge,turn]){
+  const title=family.title.toLowerCase();
+  for(const term of forbiddenTitleTerms)assert(!title.includes(term),`${family.familyId} title leaks internal theory term ${term}`);
+}
+assert(ge.title==='G → E · Different Routes','G→E family uses an experiential label');
+assert(turn.title==='Back to DO','C-return family uses an experiential label');
+
 const plan=buildDailySessionPlan({currentStage:8,eventCount:20});
 assert(plan.focusFamilyIds.join(',')==='ornament-to-mi,turn-to-do','Stage 8 session focuses both target-directed families');
 for(const id of ['ge-orn-passing','ge-orn-appoggiatura','ge-orn-neighbor','ge-orn-chromatic','turn-do-grow'])assert(plan.events.some(e=>e.variantId===id&&e.presentationMode==='BUILD'),`${id} appears as BUILD before later reading`);
 assert(plan.events.filter(e=>['ornament-to-mi','turn-to-do'].includes(e.familyId)).every(e=>e.harmonyFieldId==='static-c'),'Stage 8 keeps a neutral C field while ornament direction is learned');
 assert(plan.events.every(e=>!('theoryPrompt' in e)&&!('ornamentQuestion' in e)),'Learning Events do not turn ornament names into user tasks');
 
-console.log('OK: Stage 8 Ornament as Direction preserves musical targets across passing, neighbor, appoggiatura, turn and chromatic approach');
+console.log('OK: Stage 8 preserves musical targets across internal ornament operators without leaking theory labels into the learner task');
