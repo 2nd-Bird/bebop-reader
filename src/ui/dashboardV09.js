@@ -1,5 +1,5 @@
 import { loadStateV3 } from '../storage-v3.js';
-import { schedulerSignals, cBluesFormReady } from '../curriculum/mastery.js';
+import { schedulerSignals, cBluesStageReady, cBluesConnectReady } from '../curriculum/mastery.js';
 import { STAGES, stageByNumber } from '../curriculum/stages.js';
 import { familyById, familiesForStage } from '../curriculum/phraseFamilyRegistry.js';
 import { musicalFormById } from '../curriculum/musicalForms.js';
@@ -22,25 +22,27 @@ function currentSnapshot(state){
   const stageNo=state.stageProgress?.currentStage??0,stage=stageByNumber(stageNo)||STAGES[0],families=displayFamiliesForStage(stage),signals=schedulerSignals(state),due=signals.dueFamilyIds.map(familyById).filter(Boolean),weak=signals.weakFamilyIds.map(familyById).filter(Boolean);
   const focus=[...due.filter(f=>families.includes(f)),...weak.filter(f=>families.includes(f)),...families].filter((f,i,a)=>f&&a.findIndex(x=>x.familyId===f.familyId)===i).slice(0,2);
   const readiness=families.length?Math.round(families.reduce((sum,f)=>sum+familyMetric(state.familyMastery?.[f.familyId]),0)/families.length):0;
-  const forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean),bluesReady=stageNo>=14&&cBluesFormReady(state.familyMastery||{});
-  const activeForm=stageNo>=14?(bluesReady?musicalFormById('rhythm-changes-32'):musicalFormById('c-blues-12')):(forms.find(f=>f.status==='ACTIVE')||null);
-  return{stageNo,stage,families,due,weak,focus,readiness,forms,activeForm,bluesReady};
+  const forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean),stage14Ready=stageNo>=14&&cBluesStageReady(state.familyMastery||{}),connectReady=stageNo>=14&&cBluesConnectReady(state.familyMastery||{});
+  const activeForm=stageNo>=14?(stage14Ready?musicalFormById('rhythm-changes-32'):musicalFormById('c-blues-12')):(forms.find(f=>f.status==='ACTIVE')||null);
+  return{stageNo,stage,families,due,weak,focus,readiness,forms,activeForm,stage14Ready,connectReady};
 }
 export function renderV09Home({app,navigate}){
   const state=loadStateV3(),x=currentSnapshot(state),last=state.lastSessionResult;
   const familyText=x.focus.length?x.focus.map(f=>f.title).join(' · '):x.stage.title;
-  const focusText=x.activeForm?`${x.activeForm.title} · ${familyText}`:familyText;
+  const flowText=x.stageNo>=14&&!x.stage14Ready?(x.connectReady?' · 後半は思い出して':' · 4小節つなげる'):'';
+  const focusText=x.activeForm?`${x.activeForm.title} · ${familyText}${flowText}`:familyText;
   const root=shell(app,`<section class="hero v09-hero"><div class="eyebrow">TODAY · CONTINUOUS SESSION</div><h1>音楽を止めずに、<br><em>読む。</em></h1><p>聴く → 見る → 頭で鳴らす → 歌う。失敗しても流れは止めず、あとで同じ動きへ戻る。</p></section><section class="today-card card v09-today"><div class="today-top"><div><span class="label">STAGE ${x.stageNo} · ${esc(x.stage.title)}</span><h2>${esc(focusText)}</h2></div><div class="tempo-badge"><span>♩</span><b>60</b></div></div><div class="v09-flow-strip"><span>LISTEN</span><i>→</i><span>SEE</span><i>→</i><span>SING</span><i>→</i><span>FLOW</span></div><div class="v09-gate"><small>次にできること</small><b>${esc(x.stage.gate)}</b></div><button class="primary big" id="v09-start">セッションを始める <span>→</span></button><small class="v09-duration">約5分 · 音楽は止まりません</small></section><section class="metrics-grid"><div class="metric card"><span>STREAK</span><b>${state.streak||0}<small>日</small></b><em>${state.totalSessions||0} sessions</em></div><div class="metric card"><span>READINESS</span><b>${x.readiness}<small>%</small></b><em>${x.due.length?`${x.due.length} review due`:'on track'}</em></div></section>${last?`<section class="card v09-last"><span class="label">LAST SESSION</span><div><b>${last.stars||0}★</b><span>Reading ${last.readScore??'—'}</span><span>Pitch ${last.pitch??'—'}</span><span>Flow ${last.flow??'—'}</span></div></section>`:''}<section class="locked-worlds"><div class="world active"><b>C</b><span>Major</span><small>NOW</small></div><div class="world"><b>F</b><span>Major</span><small>LATER</small></div><div class="world"><b>B♭</b><span>Major</span><small>LATER</small></div></section>`,{active:'home'});
   bindNav(root,navigate);root.querySelector('#v09-start').onclick=()=>navigate('/session');
 }
 export function renderV09Library({app,navigate}){
-  const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]),bluesReady=cBluesFormReady(state.familyMastery||{});
+  const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]),stage14Ready=cBluesStageReady(state.familyMastery||{}),connectReady=cBluesConnectReady(state.familyMastery||{});
   const sections=STAGES.map(stage=>{
     const open=unlocked.has(stage.stage)||stage.stage===current,direct=familiesForStage(stage.stage),forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean);
     const familyRows=direct.map(f=>`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(f.title)}</b><small>${open?'五線譜から歌って身につける動き':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${open?'READ · SING':'LOCKED'}</span></div></div>`).join('');
     const formRows=forms.map(form=>{
-      const rhythmLocked=form.formId==='rhythm-changes-32'&&!bluesReady,active=open&&form.status==='ACTIVE'&&!rhythmLocked;
-      const detail=!open?'前のStageが安定すると開きます':rhythmLocked?'C BluesでI / IV / Vの動きが安定すると開きます':'既知の動きをformの中で読み、つなげる';
+      const rhythmLocked=form.formId==='rhythm-changes-32'&&!stage14Ready,active=open&&form.status==='ACTIVE'&&!rhythmLocked;
+      const nextStep=connectReady?'4小節の後半を譜面なしでも続けられると開きます':'C BluesでI / IV / Vを読み、4小節をつなげると開きます';
+      const detail=!open?'前のStageが安定すると開きます':rhythmLocked?nextStep:'既知の動きをformの中で読み、つなげる';
       return`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(form.title)}</b><small>${detail}</small></div><div class="v09-family-score"><span>${active?'READ · FLOW':open?'NEXT':'LOCKED'}</span></div></div>`;
     }).join('');
     return`<section class="v09-family-list"><div class="group-head"><div><span class="eyebrow">STAGE ${stage.stage}</span><h2>${esc(stage.title)}</h2><small>${esc(stage.gate)}</small></div></div>${familyRows}${formRows}</section>`;
