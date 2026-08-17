@@ -15,6 +15,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
   let grooveStop = null;
   let raf = 0;
   let running = false;
+  let activeEventId = null;
   let displayedEventId = null;
   let lastPhase = null;
   const scored = new Set();
@@ -53,7 +54,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
       const countInBeats = plan.countInBars * plan.beatsPerBar;
       const countNo = Math.max(1, Math.min(countInBeats, Math.floor(beat) + countInBeats + 1));
       view.setCount(countNo);
-      view.setPhase('SPACE');
+      if (lastPhase !== 'COUNT_IN') { lastPhase = 'COUNT_IN'; view.setPhase('SPACE'); }
       view.update({ beat, bar: 0, beatInBar: countNo, totalBeats: plan.totalBeats, progress: 0, event: null, phase: 'COUNT_IN' });
       raf = requestAnimationFrame(frame);
       return;
@@ -61,6 +62,11 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
 
     view.setCount(null);
     const { event, phase } = timeline.phaseAtBeat(beat);
+    if (event?.eventId !== activeEventId) {
+      activeEventId = event?.eventId || null;
+      displayedEventId = null;
+      view.clearScore();
+    }
     if (event && beat >= event.prepareBeat && displayedEventId !== event.eventId) {
       displayedEventId = event.eventId;
       view.showEvent(event, event.scoreModel);
@@ -92,6 +98,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
         scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });
         await startSessionCapture();
         grooveStop = startGroove({ transport, key: plan.key });
+        view.setRunning();
         running = true;
         raf = requestAnimationFrame(frame);
       } catch (error) {
