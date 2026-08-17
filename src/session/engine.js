@@ -11,7 +11,7 @@ import { createTimeline } from './timeline.js';
 
 const clamp01 = n => Math.max(0, Math.min(1, n));
 
-export function createSessionEngine({ plan, view, latencyMs = 0 }) {
+export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult = null, onSessionComplete = null }) {
   const timeline = createTimeline(plan);
   let transport = null, grooveStop = null, raf = 0, running = false;
   let activeEventId = null, displayedEventId = null, lastPhase = null;
@@ -20,18 +20,14 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
   function scheduleRecovery(event,result){
     if(!event||!result||result.stars>=3)return;
     const echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
-    if(echoSlot){
-      occupiedEchoSlots.add(echoSlot.eventId);
-      modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.105,type:'triangle'}));
-      echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});
-    }
+    if(echoSlot){occupiedEchoSlots.add(echoSlot.eventId);modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.105,type:'triangle'}));echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoSlot.prepareBeat,sourceEventId:event.eventId});}
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
   }
 
   function scoreOne(event, samples = getSessionSamples()) {
     if (!event || scored.has(event.eventId)) return null;
     const result = scoreEvent({ event, scoreModel: event.scoreModel, samples, transport, latencyMs });
-    scored.add(event.eventId); results.push(result); scheduleRecovery(event,result); return result;
+    scored.add(event.eventId); results.push(result); scheduleRecovery(event,result); onEventResult?.(event,result); return result;
   }
 
   async function finish() {
@@ -39,7 +35,8 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
     running = false; cancelAnimationFrame(raf);
     const samples = stopSessionCapture();
     for (const event of timeline.events) if (!scored.has(event.eventId) && transport.currentBeat() >= event.singEndBeat) scoreOne(event, samples);
-    grooveStop?.(); modelStops.forEach(stop=>stop?.()); transport.stop(); stopMic(); view.setCount(null); view.showSummary(summarizeSession(results));
+    grooveStop?.(); modelStops.forEach(stop=>stop?.()); transport.stop(); stopMic(); view.setCount(null);
+    const summary=summarizeSession(results);onSessionComplete?.(summary,plan);view.showSummary(summary);
   }
 
   function frame() {
@@ -56,8 +53,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0 }) {
     view.setCount(null);
     const state = timeline.phaseAtBeat(beat), event = state.event;
     let phase = state.phase;
-    const echo = echoWindows.find(x=>beat>=x.startBeat&&beat<x.endBeat);
-    if(echo)phase='ECHO';
+    const echo = echoWindows.find(x=>beat>=x.startBeat&&beat<x.endBeat); if(echo)phase='ECHO';
     if (event?.eventId !== activeEventId) { activeEventId = event?.eventId || null; displayedEventId = null; view.clearScore(); }
     if (event && beat >= event.prepareBeat && displayedEventId !== event.eventId) { displayedEventId = event.eventId; view.showEvent(event, event.scoreModel); }
     if (phase !== lastPhase) { lastPhase = phase; view.setPhase(phase); }
