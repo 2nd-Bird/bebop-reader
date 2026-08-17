@@ -1,7 +1,11 @@
-import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';
+import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{STAGES,stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';import{musicalFormById}from'./musicalForms.js';
 const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
  const famIds=new Set(),contextManagedVariantIds=new Set();
+ for(const stage of STAGES){
+  for(const formId of stage.unlock?.forms||[])if(!musicalFormById(formId))throw new Error(`stage ${stage.stage}: missing musical form ${formId}`);
+  for(const familyId of stage.unlock?.integrationFamilyIds||[])if(!PHRASE_FAMILIES.some(f=>f.familyId===familyId))throw new Error(`stage ${stage.stage}: missing integration family ${familyId}`);
+ }
  for(const f of PHRASE_FAMILIES){
   if(famIds.has(f.familyId))throw new Error(`duplicate family ${f.familyId}`);famIds.add(f.familyId);
   if(!stageByNumber(f.stage))throw new Error(`${f.familyId}: unknown stage`);
