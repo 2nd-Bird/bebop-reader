@@ -13,6 +13,7 @@ const STAGE8_NEIGHBOR_SOURCE={type:'hamase',hamaseRef:'ex.008',sourcePage:24,sou
 const STAGE8_APPOGGIATURA_SOURCE={type:'hamase',hamaseRef:'ex.162',sourcePage:131,sourceWork:'Night and Day',analysisRef:'C triad skeletonにEへの前打音Fを加えlineを作る',adaptation:'G→E fragment reduced from the verified C-major target-directed appoggiatura principle'};
 const STAGE8_CHROMATIC_SOURCE={type:'hamase',hamaseRef:'ex.019',sourcePage:28,sourceWork:'Thriving from a Riff [take 3]',analysisRef:'和声音へ短2度下から前打音を当てる',adaptation:'F#→G lower-semitone approach inserted inside the known G→E movement'};
 const STAGE8_TURN_SOURCE={type:'hamase',hamaseRef:'ex.032',sourcePage:34,sourcePages:[34,131],sourceWork:'Cosmic Rays [take 5]',analysisRef:'Cを軸とするd-c-b-c turn; ex.162でも同じoperatorをC Major line生成に使用',adaptation:'Short C-major pedagogical turn; surrounding Parker phrase is not copied'};
+const STAGE9_SOURCE={type:'hamase',hamaseRef:'ex.071',hamaseRefs:['ex.071','ex.085'],sourcePage:50,sourcePages:[50,58],sourceWork:'Lady be Good',analysisRef:'複数コードの1→7接続が一つの長い下降LINEAR LINEを作る原理',adaptation:'C-major pedagogical reduction using the already-known C–B–A–G–F–E–D–C line; not a transcription or transposition of Lester Young’s phrase'};
 export const VARIANTS=[
   V('anchor-cg-01','anchor-do-sol','SEED',[N('C4',60,0,1),N('G4',67,1,1),N('C4',60,2,1),N('G4',67,3,1)],{allowedPresentation:TEACH}),
   V('anchor-gc-01','anchor-do-sol','CHANGE',[N('G4',67,0,1),N('C4',60,1,1),N('G4',67,2,1),N('C4',60,3,1)],{parentVariant:'anchor-cg-01',morphType:'CHANGE',morphTargets:[0,1,2,3],allowedPresentation:LEARN}),
@@ -48,6 +49,8 @@ export const VARIANTS=[
   V('ge-orn-chromatic','ornament-to-mi','CHANGE',[N('G4',67,0,.5),N('F#4',66,.5,.5),N('G4',67,1,1),N('F4',65,2,1),N('E4',64,3,1)],{parentVariant:'ge-orn-neighbor',morphType:'CHANGE',morphTargets:[1],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_CHROMATIC_SOURCE,ornamentType:'CHROMATIC_APPROACH',targetRole:'G4→E4'}),
   V('turn-do-seed','turn-to-do','SEED',[N('D4',62,0,2),N('C4',60,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],ornamentType:'NONE',targetRole:'C4'}),
   V('turn-do-grow','turn-to-do','GROW',[N('D4',62,0,1),N('C4',60,1,1),N('B3',59,2,1),N('C4',60,3,1)],{parentVariant:'turn-do-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE8_TURN_SOURCE,ornamentType:'TURN',targetRole:'C4'}),
+  V('long-line-2bar','long-line-through-changes','SEED',[N('C5',72,0,2),N('B4',71,2,2),N('A4',69,4,2),N('G4',67,6,2)],{allowedPresentation:TEACH,allowedHarmony:['Cmaj7','Am7'],source:STAGE9_SOURCE}),
+  V('long-line-4bar','long-line-through-changes','GROW',[N('C5',72,0,2),N('B4',71,2,2),N('A4',69,4,2),N('G4',67,6,2),N('F4',65,8,2),N('E4',64,10,2),N('D4',62,12,2),N('C4',60,14,2)],{parentVariant:'long-line-2bar',morphType:'EXTEND',morphTargets:[4,5,6,7],allowedPresentation:LEARN,allowedHarmony:['Cmaj7','Am7','FMaj7','Dm7'],source:STAGE9_SOURCE}),
 ];
 export const variantById=id=>VARIANTS.find(v=>v.variantId===id)||null;
 export const variantsForFamily=familyId=>VARIANTS.filter(v=>v.familyId===familyId);
