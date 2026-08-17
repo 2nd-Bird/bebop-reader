@@ -39,7 +39,7 @@ export function startGroove({ transport, key = 'C', totalBeats = Infinity, fromB
   const cancelNodes = [];
 
   const scheduleThroughBeat = beatLimit => {
-    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.floor(beatLimit) + 1));
+    const endBeat = Math.min(totalBeats, Math.max(nextBeat, Math.ceil(beatLimit)));
     if (endBeat <= nextBeat) return;
     for (const event of grooveEvents({ fromBeat: nextBeat, toBeat: endBeat, key, beatsPerBar: transport.beatsPerBar })) {
       const time = transport.timeAtBeat(event.beat);
