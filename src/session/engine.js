@@ -35,7 +35,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
   }
 
   function startOutput(fromBeat = 0) {
-    grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
+    grooveStop = startGroove({ transport, key: plan.key, plan, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
     scheduleFutureModels(fromBeat);
   }
 
