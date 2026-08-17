@@ -16,20 +16,23 @@ function chooseFamilies({currentStage,dueFamilyIds=[],weakFamilyIds=[]}){
  return uniq([...due,...weak,...current,...prior]).slice(0,2).map(familyById);
 }
 
+const sequenceFor=family=>family.contextSequence?.length?family.contextSequence:family.variants.map(variantId=>({variantId,harmonyFieldId:null}));
 function buildSlots(families,eventCount,{familyMastery={},dueFamilyIds=[]}={}){
  const state=new Map(families.map(f=>[f.familyId,0])),due=new Set(dueFamilyIds),out=[];
  for(let i=0;i<eventCount;i++){
-  const family=families[i%families.length],vs=family.variants.map(variantById),n=state.get(family.familyId)||0,record=familyMastery[family.familyId]||null,known=(record?.attempts||0)>0;
-  let variant=vs[n%vs.length];
-  if(n===0&&known)variant=vs[(record?.coldReadAttempts||0)%vs.length];
+  const family=families[i%families.length],sequence=sequenceFor(family),n=state.get(family.familyId)||0,record=familyMastery[family.familyId]||null,known=(record?.attempts||0)>0;
+  let sequenceIndex=n%sequence.length;
+  if(n===0&&known)sequenceIndex=(record?.coldReadAttempts||0)%sequence.length;
+  const entry=sequence[sequenceIndex],variant=variantById(entry.variantId),previous=n>0?sequence[(n-1)%sequence.length]:null;
   state.set(family.familyId,n+1);
   let mode='COLD_READ';
   if(n===0&&(due.has(family.familyId)||known))mode='COLD_READ';
   else if(n===0&&variant.allowedPresentation.includes('TEACHER_CALL'))mode='TEACHER_CALL';
-  else if(n<vs.length&&variant.morphType!=='NONE'&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
-  else if(n<vs.length&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
+  else if(n<sequence.length&&variant.morphType!=='NONE'&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
+  else if(n<sequence.length&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
   else if(n%3===1&&variant.allowedPresentation.includes('DELAYED_READ'))mode='DELAYED_READ';
-  out.push({family,variant,mode});
+  const harmonyTransfer=Boolean(previous&&previous.variantId===entry.variantId&&previous.harmonyFieldId&&entry.harmonyFieldId&&previous.harmonyFieldId!==entry.harmonyFieldId);
+  out.push({family,variant,mode,sequenceIndex,harmonyFieldId:entry.harmonyFieldId||null,harmonyTransfer});
  }
  return out;
 }
@@ -43,11 +46,11 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  const baseSeed={sessionId:`stage-${currentStage}-${Date.now()}`,stage:currentStage,bpm,key,form:sessionForm,beatsPerBar:4,countInBars:1};
  const events=[];let cursor=0;
  for(let i=0;i<slots.length;i++){
-  const {family,variant,mode}=slots[i],scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
+  const {family,variant,mode,sequenceIndex,harmonyFieldId:sequenceHarmonyFieldId,harmonyTransfer}=slots[i],scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
   if(cursor+fieldBeats>targetSessionBeats&&events.length>=8)break;
   const startBeat=cursor,endBeat=startBeat+fieldBeats,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE';
   const overrideId=harmonyFieldOverrides[variant.variantId]||harmonyFieldOverrides[family.familyId]||null;
-  const harmonyField=overrideId?harmonyFieldById(overrideId):defaultHarmonyFieldFor(variant.allowedHarmony,{scoreBeats});
+  const harmonyField=overrideId?harmonyFieldById(overrideId):sequenceHarmonyFieldId?harmonyFieldById(sequenceHarmonyFieldId):defaultHarmonyFieldFor(variant.allowedHarmony,{scoreBeats});
   if(!harmonyField)throw new Error(`${variant.variantId}: harmony field not found for ${scoreBeats} beats`);
   const harmonyTimeline=harmonyField.timeline.map(x=>({...x})),harmonyContext=harmonyTimeline[0]?.chord||'C';
   if(harmonyTimeline.some(x=>!variant.allowedHarmony.includes(x.chord)))throw new Error(`${variant.variantId}: harmony field ${harmonyField.harmonyFieldId} is outside allowed scope`);
@@ -59,7 +62,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   let prepareBeat;
   if(isTeacher)prepareBeat=Math.min(startBeat+scoreBeats,singStartBeat);
   else prepareBeat=scoreBeats>4?startBeat:startBeat+4;
-  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyFieldId:harmonyField.harmonyFieldId,harmonyContext,harmonyTimeline,form:fieldNameFor(fieldBeats),fieldBeats,formPosition:0,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyFieldId:harmonyField.harmonyFieldId,harmonyContext,harmonyTimeline,harmonyTransfer,contextSequenceIndex:sequenceIndex,form:fieldNameFor(fieldBeats),fieldBeats,formPosition:0,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+scoreBeats;}
   if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,baseSeed);
