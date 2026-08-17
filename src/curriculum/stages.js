@@ -8,6 +8,7 @@ export const STAGES = [
   { stage: 6, id: 'two-generators', title: 'Two Generators', unlock: { notes: ['B3','C4','D4','E4','F4','G4','A4','B4','C5'], rhythm: ['quarter','two-bar'], harmony: ['Cmaj7','Am7','FMaj7','Dm7','G7','Em7'], generators: ['harmony-to-line','line-to-cell-to-harmony'] }, field: 'training-4', phraseBeats: 8, gate: '同じ下降の動きを、異なる生成系列から育った普通の譜面としてcold readできる' },
   { stage: 7, id: 'cell-grammar', title: 'CELL Grammar', unlock: { notes: ['B3','C4','D4','E4','F4','G4','A4','B4','C5'], rhythm: ['quarter','eighth-pair'], transform: ['same-target-surface-change'] }, field: 'training-4', gate: 'G→Fという同じ到達運動を、表面の音数や形が変わっても普通の譜面からcold readできる' },
   { stage: 8, id: 'ornament-direction', title: 'Ornament as Direction', unlock: { notes: ['B3','C4','D4','E4','F4','F#4','G4','A4','B4'], rhythm: ['quarter','eighth-pair'], transform: ['passing','neighbor','appoggiatura','turn','chromatic-approach'] }, field: 'training-4', gate: '装飾音が増えても、どこへ向かうlineかを失わず普通の譜面からcold readできる' },
+  { stage: 9, id: 'chord-change-long-line', title: 'Chord Change / Long Line', unlock: { notes: ['B3','C4','D4','E4','F4','G4','A4','B4','C5'], rhythm: ['half','quarter','two-bar','four-bar'], harmony: ['Cmaj7','Am7','FMaj7','Dm7'], phraseBeats: [8,16], fieldProgression: ['training-4','phrase-8'] }, field: 'phrase-8', phraseBeats: 16, gate: '和声が小節ごとに変わっても、4小節の下降LINEAR LINEを切らずにcold readできる' },
 ];
 export const stageByNumber = stage => STAGES.find(s => s.stage === Number(stage)) || null;
 export const stagesThrough = stage => STAGES.filter(s => s.stage <= Number(stage));
