@@ -44,9 +44,21 @@ export function createSessionView({ app, navigate }) {
       start.textContent = 'STARTING…';
     },
 
+    setRunning() {
+      start.classList.add('hidden');
+    },
+
     setCount(value) {
       if (value == null) count.classList.add('hidden');
       else { count.textContent = String(value); count.classList.remove('hidden'); }
+    },
+
+    clearScore() {
+      currentEvent = null;
+      currentScoreModel = null;
+      score.innerHTML = '';
+      playhead.classList.remove('active');
+      empty.classList.remove('hidden');
     },
 
     showEvent(event, scoreModel) {
