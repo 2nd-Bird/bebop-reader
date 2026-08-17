@@ -2,6 +2,7 @@ import { ensureAudio, getAudioContext, audioSessionStatus } from '../audio/conte
 import { scheduleCountIn } from '../audio/countIn.js';
 import { startGroove } from '../audio/groove.js';
 import { scheduleModelPhrase } from '../audio/model.js';
+import { scheduleHarmonyCues } from '../audio/harmony.js';
 import { findEchoSlot, scheduleDelayedRetry } from '../curriculum/recovery.js';
 import { initMic, startSessionCapture, stopSessionCapture, getSessionSamples, stopMic } from '../mic.js';
 import { scoreEvent } from '../scoring/eventScoring.js';
@@ -15,10 +16,11 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
   const timeline = createTimeline(plan);
   let transport = null, grooveStop = null, raf = 0, running = false, interrupted = false;
   let activeEventId = null, displayedEventId = null, lastPhase = null, audioContext = null;
-  const scored = new Set(), results = [], modelStops = [], occupiedEchoSlots = new Set(), echoWindows = [];
+  const scored = new Set(), results = [], modelStops = [], harmonyStops = [], occupiedEchoSlots = new Set(), echoWindows = [];
 
   const cancelModels = () => { modelStops.splice(0).forEach(stop => stop?.()); };
-  const stopOutput = () => { grooveStop?.(); grooveStop = null; cancelModels(); };
+  const cancelHarmony = () => { harmonyStops.splice(0).forEach(stop => stop?.()); };
+  const stopOutput = () => { grooveStop?.(); grooveStop = null; cancelModels(); cancelHarmony(); };
   const audioDebug = () => ({ ...(grooveStop?.status?.() || {}), audioSession: audioSessionStatus() });
 
   function scheduleFutureModels(fromBeat = 0) {
@@ -34,9 +36,18 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     }
   }
 
+  function scheduleFutureHarmony(fromBeat = 0) {
+    if ((plan.stage ?? 0) < 4) return;
+    for (const event of timeline.events) {
+      if (event.startBeat < fromBeat) continue;
+      harmonyStops.push(scheduleHarmonyCues({ transport, scoreModel: event.scoreModel, startBeat: event.startBeat }));
+    }
+  }
+
   function startOutput(fromBeat = 0) {
     grooveStop = startGroove({ transport, key: plan.key, totalBeats: plan.totalBeats, fromBeat, primeBeats: 16, lookaheadSec: 8 });
     scheduleFutureModels(fromBeat);
+    scheduleFutureHarmony(fromBeat);
   }
 
   function scheduleRecovery(event,result){
@@ -148,8 +159,6 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       if (running) return;
       try {
         view.setStarting();
-        // Do not race AudioContext.resume() against iOS getUserMedia audio-session recategorization.
-        // Establish output, capture, the duplex category, then re-check output before any musical nodes are scheduled.
         await ensureAudio();
         await initMic();
         await startSessionCapture();
