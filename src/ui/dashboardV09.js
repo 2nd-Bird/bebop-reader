@@ -1,5 +1,5 @@
 import { loadStateV3 } from '../storage-v3.js';
-import { schedulerSignals } from '../curriculum/mastery.js';
+import { schedulerSignals, cBluesFormReady } from '../curriculum/mastery.js';
 import { STAGES, stageByNumber } from '../curriculum/stages.js';
 import { familyById, familiesForStage } from '../curriculum/phraseFamilyRegistry.js';
 import { musicalFormById } from '../curriculum/musicalForms.js';
@@ -22,8 +22,9 @@ function currentSnapshot(state){
   const stageNo=state.stageProgress?.currentStage??0,stage=stageByNumber(stageNo)||STAGES[0],families=displayFamiliesForStage(stage),signals=schedulerSignals(state),due=signals.dueFamilyIds.map(familyById).filter(Boolean),weak=signals.weakFamilyIds.map(familyById).filter(Boolean);
   const focus=[...due.filter(f=>families.includes(f)),...weak.filter(f=>families.includes(f)),...families].filter((f,i,a)=>f&&a.findIndex(x=>x.familyId===f.familyId)===i).slice(0,2);
   const readiness=families.length?Math.round(families.reduce((sum,f)=>sum+familyMetric(state.familyMastery?.[f.familyId]),0)/families.length):0;
-  const forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean),activeForm=forms.find(f=>f.status==='ACTIVE')||null;
-  return{stageNo,stage,families,due,weak,focus,readiness,forms,activeForm};
+  const forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean),bluesReady=stageNo>=14&&cBluesFormReady(state.familyMastery||{});
+  const activeForm=stageNo>=14?(bluesReady?musicalFormById('rhythm-changes-32'):musicalFormById('c-blues-12')):(forms.find(f=>f.status==='ACTIVE')||null);
+  return{stageNo,stage,families,due,weak,focus,readiness,forms,activeForm,bluesReady};
 }
 export function renderV09Home({app,navigate}){
   const state=loadStateV3(),x=currentSnapshot(state),last=state.lastSessionResult;
@@ -33,11 +34,15 @@ export function renderV09Home({app,navigate}){
   bindNav(root,navigate);root.querySelector('#v09-start').onclick=()=>navigate('/session');
 }
 export function renderV09Library({app,navigate}){
-  const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]);
+  const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]),bluesReady=cBluesFormReady(state.familyMastery||{});
   const sections=STAGES.map(stage=>{
     const open=unlocked.has(stage.stage)||stage.stage===current,direct=familiesForStage(stage.stage),forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean);
     const familyRows=direct.map(f=>`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(f.title)}</b><small>${open?'五線譜から歌って身につける動き':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${open?'READ · SING':'LOCKED'}</span></div></div>`).join('');
-    const formRows=forms.map(form=>{const active=open&&form.status==='ACTIVE';return`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(form.title)}</b><small>${active?'既知の動きをformの中で読み、つなげる':open?'次の音楽世界として準備中':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${active?'READ · FLOW':open?'NEXT':'LOCKED'}</span></div></div>`;}).join('');
+    const formRows=forms.map(form=>{
+      const rhythmLocked=form.formId==='rhythm-changes-32'&&!bluesReady,active=open&&form.status==='ACTIVE'&&!rhythmLocked;
+      const detail=!open?'前のStageが安定すると開きます':rhythmLocked?'C BluesでI / IV / Vの動きが安定すると開きます':'既知の動きをformの中で読み、つなげる';
+      return`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(form.title)}</b><small>${detail}</small></div><div class="v09-family-score"><span>${active?'READ · FLOW':open?'NEXT':'LOCKED'}</span></div></div>`;
+    }).join('');
     return`<section class="v09-family-list"><div class="group-head"><div><span class="eyebrow">STAGE ${stage.stage}</span><h2>${esc(stage.title)}</h2><small>${esc(stage.gate)}</small></div></div>${familyRows}${formRows}</section>`;
   }).join('');
   const root=shell(app,`<section class="page-title"><span class="eyebrow">CURRICULUM · C</span><h1>歌って身につける順番。</h1><p>理論問題ではなく、普通の譜面が少しずつ育っていきます。</p></section>${sections}`,{active:'library'});
