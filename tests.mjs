@@ -2,12 +2,15 @@ import {EXERCISES} from './src/exercises.js';
 import {yin,midiToFreq} from './src/pitchDetector.js';
 import {scoreAttempt} from './src/scoring.js';
 import {scoreEvent} from './src/scoring/eventScoring.js';
+import {modelSchedule} from './src/audio/model.js';
+import {morphDescriptor} from './src/notation/morph.js';
 import {createTransport} from './src/session/transport.js';
 import {createTimeline} from './src/session/timeline.js';
 import {PHRASE_FAMILIES} from './src/curriculum/phraseFamilies.js';
 import {VARIANTS,variantById} from './src/curriculum/variants.js';
 import {validateCurriculum} from './src/curriculum/validate.js';
 import {buildDailySessionPlan} from './src/curriculum/scheduler.js';
+import {findEchoSlot,scheduleDelayedRetry} from './src/curriculum/recovery.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
 assert(EXERCISES.length>=24,'need >=24 exercises');
@@ -37,10 +40,10 @@ transport.pause();fakeCtx.currentTime=320;assert(Math.abs(transport.currentBeat(
 assert(transport.resumeAtBoundary()===300,'transport resume boundary');
 
 const timeline=createTimeline({totalBeats:32,events:[
-  {eventId:'e1',startBeat:0,prepareBeat:4,singStartBeat:8,singEndBeat:12,endBeat:16},
+  {eventId:'e1',startBeat:0,prepareBeat:4,modelStartBeat:0,modelEndBeat:4,singStartBeat:8,singEndBeat:12,endBeat:16},
   {eventId:'e2',startBeat:16,prepareBeat:20,singStartBeat:24,singEndBeat:28,endBeat:32},
 ]});
-assert(timeline.phaseAtBeat(2).phase==='SPACE','timeline space');
+assert(timeline.phaseAtBeat(2).phase==='MODEL','timeline model');
 assert(timeline.phaseAtBeat(6).phase==='AUDIATE','timeline audiate');
 assert(timeline.phaseAtBeat(9).phase==='SING','timeline sing');
 assert(timeline.phaseAtBeat(13).phase==='FEEDBACK','timeline feedback');
@@ -63,12 +66,17 @@ for(const stage of [0,1,2,3]){
   assert(plan.events.length===20,`stage ${stage} event count`);
   assert(plan.focusFamilyIds.length>=1&&plan.focusFamilyIds.length<=2,`stage ${stage} family count`);
   assert(plan.totalBeats===320,`stage ${stage} total beats`);
+  assert(plan.events[0].presentationMode==='TEACHER_CALL',`stage ${stage} teacher call`);
+  assert(plan.events[0].modelStartBeat===plan.events[0].startBeat,`stage ${stage} model start`);
+  assert(plan.events.some(x=>x.presentationMode==='BUILD'&&x.morph?.active),`stage ${stage} build morph`);
   for(const x of plan.events){assert(x.startBeat%16===0,`${x.eventId} slot`);assert(x.singStartBeat===x.startBeat+8,`${x.eventId} sing start`);assert(x.singEndBeat===x.startBeat+12,`${x.eventId} sing end`);assert(x.scoreModel.totalBeats===4,`${x.eventId} score size`);}
 }
 const curriculumPlan=buildDailySessionPlan({currentStage:3,eventCount:20});
-for(let i=0;i<curriculumPlan.events.length-1;i++){
-  const a=curriculumPlan.events[i],n=curriculumPlan.events[i+1];
-  if(a.presentationMode==='BUILD'&&n.presentationMode==='COLD_READ')assert(a.variantId!==n.variantId,'same variant cold-read immediately after build');
-}
+const teacher=curriculumPlan.events.find(x=>x.presentationMode==='TEACHER_CALL');
+assert(modelSchedule({scoreModel:teacher.scoreModel,startBeat:teacher.modelStartBeat}).every(x=>x.beat>=teacher.startBeat&&x.beat<teacher.prepareBeat),'teacher model stays in bar 1');
+const build=curriculumPlan.events.find(x=>x.presentationMode==='BUILD'&&x.morph?.active),v=variantById(build.variantId),parent=variantById(v.parentVariant);
+const md=morphDescriptor({variant:v,parentVariant:parent});assert(md.active&&md.type===v.morphType&&md.indices.length>0,'morph descriptor');
+const missed=curriculumPlan.events[0],echo=findEchoSlot(curriculumPlan.events,missed,new Set());assert(echo&&echo.startBeat>=missed.endBeat+16,'answer echo delayed beyond next event');
+const retry=scheduleDelayedRetry(curriculumPlan.events,missed,{minGapEvents:2});assert(retry&&retry.variantId===missed.variantId&&retry.presentationMode==='DELAYED_READ','delayed retry');assert(retry.startBeat>=missed.startBeat+48,'retry gap');
 
-console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; scoring ${sc.pitch}/${sc.time}/${sc.flow}; transport/timeline/event windows + ${PHRASE_FAMILIES.length} curriculum families OK`);
+console.log(`OK: ${EXERCISES.length} exercises; YIN ${d.hz.toFixed(2)}Hz; scoring ${sc.pitch}/${sc.time}/${sc.flow}; transport + curriculum + teaching loop OK`);
