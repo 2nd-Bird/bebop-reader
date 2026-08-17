@@ -41,10 +41,15 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
 
   function scheduleRecovery(event,result){
     if(!event||!result||result.stars>=3)return;
-    const echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
+    const sourceBeats=event.scoreModel?.totalBeats||4,echoSlot=findEchoSlot(timeline.events,event,occupiedEchoSlots);
     if(echoSlot){
-      occupiedEchoSlots.add(echoSlot.eventId);
-      const echoEndBeat=Math.min(echoSlot.singStartBeat,echoSlot.startBeat+(event.scoreModel?.totalBeats||4));
+      occupiedEchoSlots.add(echoSlot.eventId);echoSlot.echoOfEventId=event.eventId;
+      const naturalLead=echoSlot.singStartBeat-echoSlot.startBeat;
+      if(naturalLead<sourceBeats){
+        const targetBeats=echoSlot.scoreModel?.totalBeats||Math.max(1,echoSlot.singEndBeat-echoSlot.singStartBeat),shiftedSingStart=echoSlot.endBeat-targetBeats;
+        echoSlot.singStartBeat=shiftedSingStart;echoSlot.singEndBeat=shiftedSingStart+targetBeats;echoSlot.prepareBeat=Math.max(echoSlot.startBeat+sourceBeats,shiftedSingStart-4);
+      }
+      const echoEndBeat=echoSlot.startBeat+sourceBeats;
       echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoEndBeat,sourceEventId:event.eventId});
       if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.22,type:'triangle'}));
     }
@@ -67,7 +72,6 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     const beat = transport.currentBeat();
     const state = beat >= 0 ? timeline.phaseAtBeat(beat) : { event: null, phase: 'COUNT_IN' };
     const samples = stopSessionCapture();
-
     if (state.event && !scored.has(state.event.eventId)) {
       if (beat >= state.event.singEndBeat) scoreOne(state.event, samples);
       else if (beat >= state.event.singStartBeat) {
@@ -75,32 +79,18 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
         scheduleDelayedRetry(timeline.events, state.event, { minGapEvents: 1 });
       }
     }
-
-    transport.pause();
-    stopOutput();
-    cancelAnimationFrame(raf);
-    interrupted = true;
-    document.body.classList.remove('attempting');
-    view.showInterrupted({ reason, onResume: resume });
+    transport.pause();stopOutput();cancelAnimationFrame(raf);interrupted = true;
+    document.body.classList.remove('attempting');view.showInterrupted({ reason, onResume: resume });
   }
 
   async function resume() {
     if (!running || !interrupted || !transport) return;
     try {
-      view.setResuming();
-      await ensureAudio();
-      await startSessionCapture();
-      await ensureAudio();
-      const boundary = transport.resumeAtBoundary({ boundaryBeats: 16, leadSec: .35 });
-      activeEventId = null; displayedEventId = null; lastPhase = null;
-      view.clearScore();
-      startOutput(boundary);
-      interrupted = false;
-      view.setRunning();
-      raf = requestAnimationFrame(frame);
-    } catch (error) {
-      view.showInterrupted({ reason: 'audio', onResume: resume, error });
-    }
+      view.setResuming();await ensureAudio();await startSessionCapture();await ensureAudio();
+      const pausedBeat=transport.currentBeat(),nextBoundary=timeline.events.find(e=>e.startBeat>=pausedBeat-.02)?.startBeat??plan.totalBeats;
+      const boundary=transport.resumeAtBeat(nextBoundary,{leadSec:.35});
+      activeEventId = null; displayedEventId = null; lastPhase = null;view.clearScore();startOutput(boundary);interrupted = false;view.setRunning();raf = requestAnimationFrame(frame);
+    } catch (error) { view.showInterrupted({ reason: 'audio', onResume: resume, error }); }
   }
 
   function onVisibilityChange() { if (document.visibilityState === 'hidden') interrupt('background'); }
@@ -143,19 +133,11 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     async start() {
       if (running) return;
       try {
-        view.setStarting();
-        await ensureAudio();
-        await initMic();
-        await startSessionCapture();
-        await ensureAudio();
-        audioContext = getAudioContext();
+        view.setStarting();await ensureAudio();await initMic();await startSessionCapture();await ensureAudio();audioContext = getAudioContext();
         transport = createTransport({ audioContext, bpm: plan.bpm, beatsPerBar: plan.beatsPerBar });
         const countInBeats = plan.countInBars * plan.beatsPerBar, origin = audioContext.currentTime + countInBeats * transport.secondsPerBeat + 0.12;
-        transport.startAt(origin);
-        scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });
-        startOutput(0);
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        audioContext.addEventListener?.('statechange', onAudioStateChange);
+        transport.startAt(origin);scheduleCountIn(transport, { fromBeat: -countInBeats, toBeat: 0 });startOutput(0);
+        document.addEventListener('visibilitychange', onVisibilityChange);audioContext.addEventListener?.('statechange', onAudioStateChange);
         view.setRunning(); running = true; raf = requestAnimationFrame(frame);
       } catch (error) { running = false; interrupted = false; stopOutput(); stopSessionCapture(); stopMic(); detachLifecycle(); view.showError(error); }
     },
