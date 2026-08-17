@@ -12,7 +12,9 @@ function buildSlots(families,eventCount){
   const family=families[i%families.length],vs=family.variants.map(variantById),n=state.get(family.familyId)||0,variant=vs[n%vs.length];
   state.set(family.familyId,n+1);
   let mode='COLD_READ';
-  if(n<vs.length)mode=variant.allowedPresentation.includes('BUILD')?'BUILD':'COLD_READ';
+  if(n===0&&variant.allowedPresentation.includes('TEACHER_CALL'))mode='TEACHER_CALL';
+  else if(n<vs.length&&variant.morphType!=='NONE'&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
+  else if(n<vs.length&&variant.allowedPresentation.includes('BUILD'))mode='BUILD';
   else if(n%3===1&&variant.allowedPresentation.includes('DELAYED_READ'))mode='DELAYED_READ';
   out.push({family,variant,mode});
  }
@@ -24,8 +26,10 @@ export function buildDailySessionPlan({currentStage=3,key='C',bpm=60,eventCount=
  const slots=buildSlots(families,eventCount);
  const base={sessionId:`stage-${currentStage}-${Date.now()}`,bpm,key,form:'training-4',beatsPerBar:4,countInBars:1,totalBars:eventCount*4,totalBeats:eventCount*16};
  const events=slots.map(({family,variant,mode},i)=>{
-  const startBeat=i*16;
-  const event={eventId:`event-${String(i+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyContext:'C',form:'training-4',formPosition:i%4,startBeat,prepareBeat:startBeat+4,singStartBeat:startBeat+8,singEndBeat:startBeat+12,endBeat:startBeat+16,presentationMode:mode,modelPolicy:'NONE',morphPolicy:mode==='BUILD'?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const startBeat=i*16,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE';
+  const event={eventId:`event-${String(i+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,harmonyContext:'C',form:'training-4',formPosition:i%4,startBeat,prepareBeat:startBeat+4,singStartBeat:startBeat+8,singEndBeat:startBeat+12,endBeat:startBeat+16,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+4;}
+  if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,base);return event;
  });
  return{...base,events,focusFamilyIds:families.map(f=>f.familyId)};
