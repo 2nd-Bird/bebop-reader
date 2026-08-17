@@ -9,6 +9,14 @@ export const MUSICAL_FORMS=[
     status:'ACTIVE',
     integrationFamilyIds:['g-to-f-surfaces','density-g-to-f'],
     eventSingOffsets:[8,4,12],
+    closingFlowProgram:{
+      familyId:'g-to-f-surfaces',
+      title:'4 Bars · Keep It Moving',
+      variantIds:['gf-cell-seed','gf-cell-return','gf-cell-fan','gf-cell-return'],
+      beatsPerPart:4,
+      audiateBeats:8,
+      responseBeats:4,
+    },
     timeline:[
       {beat:0,chord:'C7'},
       {beat:16,chord:'F7'},
