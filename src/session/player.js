@@ -30,5 +30,6 @@ export function mountSession({ app, navigate }) {
     }:null
   });
   view.bindStart({ onPointerDown: () => primeAudio(), onClick: () => { if(persistSession)beginSessionV3(plan);engine.start(); } });
+  view.bindPause({onClick:()=>engine.pause()});
   return () => engine.stop();
 }

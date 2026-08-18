@@ -146,6 +146,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
         view.setRunning(); running = true; raf = requestAnimationFrame(frame);
       } catch (error) { running = false; interrupted = false; stopOutput(); stopSessionCapture(); stopMic(); detachLifecycle(); view.showError(error); }
     },
+    pause() { interrupt('user'); },
     stop() {
       if (!running) return;
       running = false; interrupted = false; cancelAnimationFrame(raf); detachLifecycle(); stopOutput(); stopSessionCapture(); transport?.stop(); stopMic(); document.body.classList.remove('attempting');
