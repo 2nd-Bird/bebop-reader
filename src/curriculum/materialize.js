@@ -15,6 +15,7 @@ export function materializeScoreModel(variant,event,sessionPlan){
  if(!variant.allowedKeys.includes(key)&&!keyTransferSupported(key,stage))throw new Error(`${variant.variantId}: key ${key} is not available at stage ${stage}`);
  if(event.presentationMode&&!variant.allowedPresentation.includes(event.presentationMode))throw new Error(`${variant.variantId}: presentation ${event.presentationMode} is not allowed`);
  const totalBeats=Math.max(4,...variant.notes.map(n=>n.startBeat+n.duration));
- const harmonyTimeline=harmonyTimelineFor(event,totalBeats),sourceNotes=applyFormMove(variant.notes,{movePolicy:event.movePolicy,harmonyContext:event.harmonyContext}),notes=transposeNotesFromC(sourceNotes,key);
- return {id:variant.variantId,title:event.title||variant.variantId,sourceKey:'C',key,bpm:sessionPlan.bpm,meter:variant.meter||[4,4],notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats,unitBeats:4,movePolicy:event.movePolicy||'NONE',sourceVariantId:variant.variantId};
+ const harmonyTimeline=harmonyTimelineFor(event,totalBeats),sourceHarmonyContext=event.sourceHarmonyContext||event.harmonyContext;
+ const sourceNotes=applyFormMove(variant.notes,{movePolicy:event.movePolicy,harmonyContext:sourceHarmonyContext}),notes=transposeNotesFromC(sourceNotes,key);
+ return {id:variant.variantId,title:event.title||variant.variantId,sourceKey:'C',key,sourceHarmonyContext,harmonyContext:event.harmonyContext,bpm:sessionPlan.bpm,meter:variant.meter||[4,4],notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats,unitBeats:4,movePolicy:event.movePolicy||'NONE',sourceVariantId:variant.variantId};
 }
