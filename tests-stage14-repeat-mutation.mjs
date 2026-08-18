@@ -13,9 +13,11 @@ assert(repeat.presentationMode==='FLOW'&&repeat.flowAction==='REPEAT','Repeat is
 assert(repeat.variantId===null&&repeat.familyId==='g-to-f-surfaces','Repeat keeps Phrase Family identity without fabricating a composite Variant');
 assert(repeat.flowSourceVariantIds.join(',')==='gf-cell-seed,gf-cell-seed','Repeat uses the same already-known one-bar Variant twice');
 assert(repeat.prepareBeat===272&&repeat.singStartBeat===276&&repeat.singEndBeat===284&&repeat.endBeat===288,'Repeat gives four beats of pre-read, eight continuous SING beats, then four beats of space');
+assert(repeat.singStartBeat-repeat.prepareBeat===4,'Repeat preserves a silent pre-read/audiation window');
 assert(repeat.scoreModel.totalBeats===8&&repeat.scoreVisibility==='FULL','Repeat presents two complete visible bars of ordinary staff notation');
 assert(repeat.modelPolicy==='NONE'&&repeat.morphPolicy==='NONE','Repeat does not reintroduce model or Morph scaffold');
 assert(repeat.harmonyTimeline.map(x=>`${x.beat}:${x.chord}`).join(',')==='0:F7,4:C7','Repeat stays inside the actual final C Blues harmonic positions');
+assert(!('analysisPrompt' in repeat)&&!('cellQuestion' in repeat)&&!('nameTheChord' in repeat),'Repeat is reading/singing rather than a theory task');
 createTimeline({events:[repeat],totalBeats:288}).validate();
 
 const mutation=buildPairFlowEvent({musicalForm:blues,startBeat:272,endBeat:288,key:'C',bpm:60,flowAction:'MUTATION'});
@@ -23,10 +25,15 @@ assert(mutation.flowSourceVariantIds.join(',')==='gf-cell-seed,gf-cell-return','
 assert(mutation.flowSourceVariantIds[0]!==mutation.flowSourceVariantIds[1],'Mutation is not a disguised repeat');
 assert(mutation.scoreModel.totalBeats===8&&mutation.singEndBeat-mutation.singStartBeat===8,'Mutation is one continuous two-bar reading window');
 assert(mutation.harmonyTimeline.map(x=>`${x.beat}:${x.chord}`).join(',')===repeat.harmonyTimeline.map(x=>`${x.beat}:${x.chord}`).join(','),'Repeat→Mutation changes the surface while keeping the same form slot/harmony field');
+assert(mutation.modelPolicy==='NONE'&&mutation.morphPolicy==='NONE'&&mutation.scoreVisibility==='FULL','Mutation stays scaffold-free with ordinary visible notation');
 assert(!('analysisPrompt' in mutation)&&!('cellQuestion' in mutation)&&!('nameTheChord' in mutation),'Mutation remains experiential staff reading rather than a theory task');
 createTimeline({events:[mutation],totalBeats:288}).validate();
 
-const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:10,harmonyContext:'F7',harmonyFieldId:'form:c-blues-12:pair'};
+const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:9,harmonyContext:'F7',harmonyFieldId:'form:c-blues-12:pair'};
+let weak=emptyFamilyMastery();
+weak=applyEventResult(weak,{...flowBase,flowAction:'REPEAT'},{readScore:62,stars:2},500);
+assert(!cBluesRepeatReady({'g-to-f-surfaces':weak}),'weak Repeat does not count as successful FLOW evidence');
+
 let record=emptyFamilyMastery(),evidence={};
 assert(!cBluesRepeatReady(evidence)&&!cBluesMutationReady(evidence)&&!cBluesConnectReady(evidence),'blank mastery begins before Repeat');
 record=applyEventResult(record,{...flowBase,flowAction:'REPEAT'},{readScore:88,stars:4},1000);evidence={'g-to-f-surfaces':record};
@@ -38,7 +45,8 @@ assert(record.seenVariantIds.length===0&&record.coldVariantIds.length===0,'compo
 
 const blankPlan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:{},bpm:60,eventCount:24,targetSessionBeats:320});
 assert(blankPlan.events.at(-1).flowAction==='REPEAT','normal C Blues FLOW begins with Repeat');
-const repeatPlan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:{'g-to-f-surfaces':applyEventResult(emptyFamilyMastery(),{...flowBase,flowAction:'REPEAT'},{readScore:88,stars:4},1000)},bpm:60,eventCount:24,targetSessionBeats:320});
+const repeatEvidence={'g-to-f-surfaces':applyEventResult(emptyFamilyMastery(),{...flowBase,flowAction:'REPEAT'},{readScore:88,stars:4},1000)};
+const repeatPlan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:repeatEvidence,bpm:60,eventCount:24,targetSessionBeats:320});
 assert(repeatPlan.events.at(-1).flowAction==='MUTATION','after Repeat the next session advances to Mutation');
 const mutationPlan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:evidence,bpm:60,eventCount:24,targetSessionBeats:320});
 assert(mutationPlan.events.at(-1).flowAction==='CONNECT','after Mutation the existing four-bar Connect step follows');
