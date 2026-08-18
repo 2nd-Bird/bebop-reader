@@ -61,7 +61,7 @@ function buildProgramSlots(form,eventCount){
 }
 export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesStageReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
 
-export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},harmonyFieldOverrides={},formId=null}={}){
+export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},harmonyFieldOverrides={},formId=null,flowActionOverride=null}={}){
  validateCurriculum();
  const resolvedFormId=currentStage>=14?recommendedFormIdForStage14(familyMastery,formId):null;
  const musicalForm=currentStage>=14?musicalFormById(resolvedFormId):null;
@@ -123,7 +123,8 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  if(musicalForm?.closingFlowProgram&&events.length>=2){
    const secondLast=events.at(-2),last=events.at(-1),span=last.endBeat-secondLast.startBeat;
    if(Math.abs(span-32)<.001){
-     const flowAction=cBluesConnectReady(familyMastery)?'RECALL':'CONNECT';
+     const requestedFlow=['CONNECT','RECALL'].includes(flowActionOverride)?flowActionOverride:null;
+     const flowAction=requestedFlow||(cBluesConnectReady(familyMastery)?'RECALL':'CONNECT');
      const flow=buildClosingFlowEvent({musicalForm,startBeat:secondLast.startBeat,endBeat:last.endBeat,key,bpm,eventId:`event-${String(events.length-1).padStart(2,'0')}-flow`,flowAction});
      if(flow)events.splice(events.length-2,2,flow);
    }
