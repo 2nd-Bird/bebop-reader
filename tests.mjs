@@ -18,6 +18,7 @@ import {migrateV2State} from './src/storage-v3.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
 const pitches=id=>variantById(id).notes.filter(n=>!n.rest).map(n=>n.pitch);
+const structuralPitches=id=>{const v=variantById(id);return (v.structuralTargetIndices||[]).map(i=>v.notes[i]?.pitch)};
 
 // Legacy notation/scoring fixtures remain valid but are not curriculum source of truth.
 assert(EXERCISES.length>=24,'need >=24 legacy exercises');
@@ -95,9 +96,9 @@ assert(pitches('harmony-descent-grow').join(',')==='C5,B4,A4,G4,F4,E4,D4,C4','Ha
 assert(defaultHarmonyFieldFor(variantById('harmony-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='Cmaj7,Am7,FMaj7,Dm7','ex.085-derived harmony chain');assert(defaultHarmonyFieldFor(variantById('line-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='G7,Em7,Cmaj7','line-first harmony field');
 const stage6Plan=buildDailySessionPlan({currentStage:6,eventCount:20});assert(stage6Plan.focusFamilyIds.join(',')==='harmony-born-descent,line-born-descent','Stage 6 both generators');
 
-// Stage 7 — same G→F movement under changing surface.
-const stage7Family=familyById('g-to-f-surfaces');assert(stage7Family?.invariant==='G→F','Stage 7 invariant');assert(stage7Family?.source?.hamaseRef==='ex.087'&&stage7Family?.source?.sourcePages?.join(',')==='59,60','Stage 7 source');assert(stage7Family?.source?.adaptation,'Stage 7 adaptation declared');
-for(const id of stage7Family.variants){const p=pitches(id);assert(p[0]==='G4'&&p.at(-1)==='F4',`${id} preserves G→F`);assert(variantById(id).allowedHarmony.join(',')==='C',`${id} avoids actualizing analytic source chords`);}
+// Stage 7 — CELL identity is the declared structural target relation, not literal surface boundaries.
+const stage7Family=familyById('g-to-f-surfaces');assert(stage7Family?.invariant==='structural G→F target relation','Stage 7 structural invariant');assert(stage7Family?.structuralTargets?.join(',')==='G,F','Stage 7 target declaration');assert(stage7Family?.source?.hamaseRef==='ex.087'&&stage7Family?.source?.sourcePages?.join(',')==='59,60','Stage 7 source');assert(stage7Family?.source?.adaptation,'Stage 7 adaptation declared');
+for(const id of stage7Family.variants){const v=variantById(id);assert(structuralPitches(id).join(',')==='G4,F4',`${id} preserves structural G→F targets`);assert(v.entryRole&&v.exitRole,`${id} declares structural boundary roles`);assert(v.allowedHarmony.join(',')==='C',`${id} avoids actualizing analytic source chords`);}
 const stage7Plan=buildDailySessionPlan({currentStage:7,eventCount:20});assert(stage7Plan.focusFamilyIds[0]==='g-to-f-surfaces','Stage 7 family priority');assert(stage7Plan.events.filter(x=>x.familyId==='g-to-f-surfaces').every(x=>x.harmonyFieldId==='static-c'),'Stage 7 neutral harmony');
 
 // Known source-placement mistakes stay forbidden.
