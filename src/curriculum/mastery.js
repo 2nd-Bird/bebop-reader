@@ -65,5 +65,5 @@ export function schedulerSignals(state,now=Date.now()){
  const dueFromQueue=(state?.reviewQueue||[]).filter(x=>!x.dueAt||x.dueAt<=now).map(x=>x.familyId);
  const dueFromMastery=Object.entries(mastery).filter(([,r])=>r?.dueAt&&r.dueAt<=now).map(([id])=>id);
  const weakFamilyIds=Object.entries(mastery).filter(([,r])=>r?.attempts>0&&(r.reading<.68||r.coldReadAttempts>0&&r.coldRead<.68)).map(([id])=>id);
- return{dueFamilyIds:[...new Set([...dueFromQueue,...dueFromMastery])],weakFamilyIds:[...new Set(weakFamilyIds)],familyMastery:mastery};
+ return{dueFamilyIds:[...new Set([...dueFromQueue,...dueFromMastery])],weakFamilyIds:[...new Set(weakFamilyIds)],familyMastery:mastery,keyProgress:state?.keyProgress||{}};
 }

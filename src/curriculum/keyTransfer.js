@@ -3,9 +3,9 @@ const FLAT_NAMES=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const SHARP_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
 export const KEY_TRANSFER_POLICY=[
-  {key:'C',semitoneFromC:0,status:'ACTIVE',pilotMaxStage:14},
-  {key:'F',semitoneFromC:5,status:'DEBUG_PILOT',pilotMaxStage:14},
-  {key:'Bb',semitoneFromC:-2,status:'DEBUG_PILOT',pilotMaxStage:14},
+  {key:'C',semitoneFromC:0,status:'ACTIVE',runtimeMaxStage:14},
+  {key:'F',semitoneFromC:5,status:'TRANSFER_RUNTIME',runtimeMaxStage:14},
+  {key:'Bb',semitoneFromC:-2,status:'TRANSFER_RUNTIME',runtimeMaxStage:14},
 ];
 
 export const keyTransferPolicy=key=>KEY_TRANSFER_POLICY.find(x=>x.key===key)||null;
@@ -13,8 +13,8 @@ export const keyTransferPolicy=key=>KEY_TRANSFER_POLICY.find(x=>x.key===key)||nu
 export function keyTransferSupported(key,stage){
   const policy=keyTransferPolicy(key);if(!policy)return false;
   if(key==='C')return true;
-  if(policy.status!=='DEBUG_PILOT')return false;
-  return Number.isFinite(stage)&&stage>=0&&stage<=policy.pilotMaxStage;
+  if(policy.status!=='TRANSFER_RUNTIME')return false;
+  return Number.isFinite(stage)&&stage>=0&&stage<=policy.runtimeMaxStage;
 }
 
 const shiftForKey=key=>{
