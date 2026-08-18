@@ -29,7 +29,6 @@ for(const id of ge.variants){
   assert(v.entryRole&&v.exitRole,`${id} declares surface/structural boundary roles`);
   assert(v.allowedHarmony.join(',')==='C',`${id} keeps source analysis out of sounding harmony`);
 }
-assert([...ge.variants].every(id=>endBeat(id)===4),'current G→E Stage 8 examples fit the Training 4 scaffold');
 
 assert(variantById('ge-orn-passing').ornamentType==='PASSING','passing metadata');
 assert(variantById('ge-orn-appoggiatura').ornamentType==='APPOGGIATURA','appoggiatura metadata');
@@ -38,6 +37,10 @@ assert(variantById('ge-orn-chromatic').ornamentType==='CHROMATIC_APPROACH','chro
 assert(pitches('ge-orn-passing').join(',')===pitches('ge-orn-appoggiatura').join(','),'passing and appoggiatura can share pitch route');
 assert(durations('ge-orn-passing').join(',')!==durations('ge-orn-appoggiatura').join(','),'passing and appoggiatura differ by time placement, not theory quiz labels');
 assert(pitches('ge-orn-chromatic').join(',')==='G4,F#4,G4,F4,E4','chromatic approach remains embedded in structural G→E direction');
+assert(variantById('ge-orn-passing').parentVariant==='ge-orn-seed','passing grows from seed');
+assert(variantById('ge-orn-appoggiatura').parentVariant==='ge-orn-passing','appoggiatura follows known route');
+assert(variantById('ge-orn-neighbor').parentVariant==='ge-orn-appoggiatura','neighbor follows appoggiatura variant');
+assert(variantById('ge-orn-chromatic').parentVariant==='ge-orn-neighbor','chromatic approach follows neighbor variant');
 
 const pretarget=variantById('ge-orn-pretarget');
 assert(pretarget.source.hamaseRef==='ex.043'&&pretarget.source.sourcePage===38,'pre-target boundary source is ex.043 p38');
@@ -59,7 +62,8 @@ assert(turnGrow.parentVariant==='turn-do-seed','turn grows from direct D→C tar
 assert(turnGrow.structuralTargetIndices.join(',')==='1'&&turnGrow.notes[1].pitch==='C4','the first C is the structural target even though the surface continues');
 assert(turnGrow.continuationRole&&turnGrow.exitRole==='turn-completion','post-target turn continuation is explicit');
 assert(turn.variants.every(id=>variantById(id).allowedHarmony.join(',')==='C'),'turn theory does not create extra sounding harmony');
-assert(turn.variants.every(id=>endBeat(id)===4),'current turn examples fit the Training 4 scaffold');
+
+assert([...ge.variants,...turn.variants].every(id=>endBeat(id)===4),'current Stage 8 examples fit the Training 4 scaffold');
 
 const forbiddenTitleTerms=['ornament','passing','neighbor','appoggiatura','turn','chromatic','surface','cell'];
 for(const family of [ge,turn]){

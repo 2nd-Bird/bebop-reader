@@ -1,11 +1,18 @@
-import{PHRASE_FAMILIES}from'./phraseFamilies.js';import{VARIANTS,variantById}from'./variants.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor}from'./harmonyFields.js';
+import{PHRASE_FAMILIES}from'./phraseFamilies.js';import{VARIANTS,variantById}from'./variants.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
- const famIds=new Set();
+ const famIds=new Set(),contextManagedVariantIds=new Set();
  for(const f of PHRASE_FAMILIES){
   if(famIds.has(f.familyId))throw new Error(`duplicate family ${f.familyId}`);famIds.add(f.familyId);
   if(!stageByNumber(f.stage))throw new Error(`${f.familyId}: unknown stage`);
   for(const id of f.variants){const v=variantById(id);if(!v)throw new Error(`${f.familyId}: missing variant ${id}`);if(v.familyId!==f.familyId)throw new Error(`${id}: wrong family`)}
+  for(const entry of f.contextSequence||[]){
+   const v=variantById(entry.variantId),field=harmonyFieldById(entry.harmonyFieldId);
+   if(!v||v.familyId!==f.familyId)throw new Error(`${f.familyId}: bad context variant ${entry.variantId}`);
+   if(!field)throw new Error(`${f.familyId}: missing context field ${entry.harmonyFieldId}`);
+   if(field.timeline.some(x=>!v.allowedHarmony?.includes(x.chord)))throw new Error(`${entry.variantId}: context field ${entry.harmonyFieldId} outside allowed harmony`);
+   contextManagedVariantIds.add(entry.variantId);
+  }
  }
  const ids=new Set(VARIANTS.map(v=>v.variantId));if(ids.size!==VARIANTS.length)throw new Error('duplicate variant');
  for(const v of VARIANTS){
@@ -16,7 +23,9 @@ export function validateCurriculum(){
    if(!Array.isArray(v.structuralTargetIndices)||!v.structuralTargetIndices.length)throw new Error(`${v.variantId}: structuralTargetIndices must be a non-empty array`);
    for(const i of v.structuralTargetIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid structural target index ${i}`);}
   }
-  const scoreBeats=variantBeats(v),field=defaultHarmonyFieldFor(v.allowedHarmony,{scoreBeats});if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')} at ${scoreBeats} beats`);
+  if(!contextManagedVariantIds.has(v.variantId)){
+   const scoreBeats=variantBeats(v),field=defaultHarmonyFieldFor(v.allowedHarmony,{scoreBeats});if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')} at ${scoreBeats} beats`);
+  }
  }
  return true;
 }

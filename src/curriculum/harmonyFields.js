@@ -3,6 +3,8 @@ export const HARMONY_FIELDS=[
   {harmonyFieldId:'static-c6',title:'C6',spanBeats:null,timeline:[{beat:0,chord:'C6'}]},
   {harmonyFieldId:'static-am7',title:'Am7',spanBeats:null,timeline:[{beat:0,chord:'Am7'}]},
   {harmonyFieldId:'static-dm7',title:'Dm7',spanBeats:null,timeline:[{beat:0,chord:'Dm7'}]},
+  {harmonyFieldId:'static-f',title:'F',spanBeats:null,timeline:[{beat:0,chord:'F'}]},
+  {harmonyFieldId:'static-g7',title:'G7',spanBeats:null,timeline:[{beat:0,chord:'G7'}]},
   {harmonyFieldId:'ii-v-i-c-2bar',title:'ii–V–I in C',spanBeats:8,timeline:[{beat:0,chord:'Dm7'},{beat:2,chord:'G7'},{beat:4,chord:'Cmaj7'}]},
   {harmonyFieldId:'c-sixth-chain-2cell',title:'C descending pair field',spanBeats:4,timeline:[{beat:0,chord:'Cmaj7'},{beat:2,chord:'Am7'}]},
   {harmonyFieldId:'c-sixth-chain-4cell',title:'C descending chain field',spanBeats:8,timeline:[{beat:0,chord:'Cmaj7'},{beat:2,chord:'Am7'},{beat:4,chord:'FMaj7'},{beat:6,chord:'Dm7'}]},
