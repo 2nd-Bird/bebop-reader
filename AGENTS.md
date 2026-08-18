@@ -16,6 +16,7 @@ Supporting documents do not override the hierarchy above:
 
 - `docs/research/cross-chapter-analysis-rev.md` — analysis for converting Hamase / Parker theory into material-generation grammar.
 - `docs/implementation/implementation-plan.md` — implementation order; revise the plan if it conflicts with higher-order documents.
+- `docs/implementation/structural-invariant-audit.md` — required implementation guardrails from the Stage 7 / 8 / 13 source audit. Read it together with the Implementation Plan when working on Phrase Family boundaries, ornament, density, Double Time, source provenance, or related tests.
 
 ## Required pre-implementation checks
 
@@ -24,6 +25,7 @@ For every implementation or curriculum/material change:
 - Read the relevant Product SPEC section.
 - Read the corresponding Curriculum Stage.
 - Check the material-policy document for contradictions.
+- For Stage 7 / 8 / 13, Phrase Family boundary logic, structural-target metadata, or tests that encode phrase boundaries, also read `docs/implementation/structural-invariant-audit.md`.
 - For Hamase-derived material, also read the cross-chapter analysis.
 - When a score example is involved, use the prepared corpus in the order specified by `docs/source/hamase-prepared-corpus-policy.md` and visually inspect the actual source page image when notation or a figure matters.
 
@@ -39,7 +41,7 @@ New material should preserve continuity from known structure:
 
 **SEED → GROW → CHANGE → MOVE → FLOW**
 
-Before adding a Phrase Family variant, explicitly state the Family's structural invariant. Do not infer structural targets from the first or last surface note. Phrase Variant, Harmony/Form context, and Presentation Mode should remain separable unless the canonical specs require coupling.
+Before adding a Phrase Family variant, explicitly state the Family's structural invariant. Do not infer structural targets from the first or last surface note. A fixed phrase span or endpoint equality may be a local pedagogical scaffold, but it is not a universal Phrase Family invariant unless the governing curriculum explicitly says so. Phrase Variant, Harmony/Form context, and Presentation Mode should remain separable unless the canonical specs require coupling.
 
 ## Source book / prepared corpus
 
