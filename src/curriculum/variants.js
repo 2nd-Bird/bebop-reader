@@ -37,5 +37,11 @@ export const VARIANTS=[
   V('gf-cell-return','g-to-f-surfaces','GROW',[N('G4',67,0,1),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE,structuralTargetIndices:[0,3],entryRole:'structural-target',exitRole:'structural-target'}),
   V('gf-cell-fan','g-to-f-surfaces','DENSIFY',[N('G4',67,0,.5),N('B4',71,.5,.5),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-return',morphType:'CHANGE',morphTargets:[0,1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE,structuralTargetIndices:[0,4],entryRole:'structural-target',exitRole:'structural-target'}),
 ];
+for(const v of VARIANTS){
+  if(v.familyId==='g-to-f-surfaces'){
+    if(!Array.isArray(v.structuralTargetIndices)||v.structuralTargetIndices.length!==2)throw new Error(`${v.variantId}: Stage 7 structural targets required`);
+    for(const i of v.structuralTargetIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid structural target index ${i}`);}
+  }
+}
 export const variantById=id=>VARIANTS.find(v=>v.variantId===id)||null;
 export const variantsForFamily=familyId=>VARIANTS.filter(v=>v.familyId===familyId);
