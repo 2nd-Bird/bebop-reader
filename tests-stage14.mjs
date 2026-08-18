@@ -41,7 +41,9 @@ const positions=new Set(plan.events.map(e=>e.formPosition));
 assert(positions.has(2)&&positions.has(5)&&positions.has(11),'events move through bar 3 / 6 / 12 form positions');
 assert(plan.events.every(e=>e.form==='c-blues-12'&&e.formTransfer===true),'every Stage 14 event belongs to the active musical form and records form transfer');
 assert(plan.events.every(e=>e.modelPolicy==='NONE'&&e.morphPolicy==='NONE'),'form integration does not re-teach known material with model or Morph');
-assert(plan.events.every(e=>['COLD_READ','DELAYED_READ'].includes(e.presentationMode)),'Stage 14 keeps sight-reading scaffold removed');
+const closingFlow=plan.events.filter(e=>e.presentationMode==='FLOW');
+assert(closingFlow.length===1&&closingFlow[0].flowAction==='CONNECT','C Blues closes with one explicit connected FLOW event');
+assert(plan.events.filter(e=>e.presentationMode!=='FLOW').every(e=>['COLD_READ','DELAYED_READ'].includes(e.presentationMode)),'ordinary Stage 14 form events keep sight-reading scaffold removed');
 assert(plan.events.every(e=>e.scoreModel.harmonyTimeline[0].chord===e.harmonyContext),'notation harmony matches the actual form slot');
 assert(plan.events.every(e=>!('cellQuestion' in e)&&!('chordAnalysisQuestion' in e)&&!('relativeMajorQuestion' in e)),'form integration never becomes a theory quiz');
 
@@ -54,4 +56,4 @@ const groove=sessionHarmonyPulses(plan);
 assert(groove.map(x=>`${x.beat}:${x.chord}`).slice(0,7).join(',')==='0:C7,16:F7,24:C7,32:G7,36:F7,40:C7,44:G7','groove follows the global 12-bar form even outside SING windows');
 assert(groove.some(x=>x.beat===48&&x.chord==='C7'),'groove carries harmony continuously into the next chorus');
 
-console.log('OK: Stage 14 runs known Phrase Families through a continuous 12-bar C Blues field and exposes Rhythm Changes through a separate functional-MOVE program');
+console.log('OK: Stage 14 runs known Phrase Families through C Blues and closes by connecting them into a four-bar FLOW');

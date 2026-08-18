@@ -1,13 +1,14 @@
 import {familiesForStage,familyById} from './phraseFamilyRegistry.js';
 import {variantById} from './variantRegistry.js';
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
-export const emptyFamilyMastery=()=>({familyId:null,reading:0,coldRead:0,attempts:0,coldReadAttempts:0,successes:0,lastSeenAt:null,lastColdReadAt:null,dueAt:null,seenVariantIds:[],coldVariantIds:[],coldHarmonyFieldIds:[],coldVariantHarmonyKeys:[],coldFormIds:[],coldFormContextKeys:[],coldFormPositionKeys:[]});
+export const emptyFamilyMastery=()=>({familyId:null,reading:0,coldRead:0,flowRead:0,attempts:0,coldReadAttempts:0,flowAttempts:0,successes:0,lastSeenAt:null,lastColdReadAt:null,lastFlowAt:null,dueAt:null,seenVariantIds:[],coldVariantIds:[],coldHarmonyFieldIds:[],coldVariantHarmonyKeys:[],coldFormIds:[],coldFormContextKeys:[],coldFormPositionKeys:[],flowFormIds:[],flowActions:[]});
 const qualityOf=r=>clamp(((r?.readScore??(.7*(r?.pitch||0)+.2*(r?.flow||0)+.1*(r?.time||0)))/100));
 const uniq=a=>[...new Set((a||[]).filter(Boolean))];
 export function applyEventResult(record,event,result,now=Date.now()){
- const prev={...emptyFamilyMastery(),...(record||{})},q=qualityOf(result),cold=['COLD_READ','DELAYED_READ'].includes(event?.presentationMode);
+ const prev={...emptyFamilyMastery(),...(record||{})},q=qualityOf(result),cold=['COLD_READ','DELAYED_READ'].includes(event?.presentationMode),flow=event?.presentationMode==='FLOW';
  const attempts=prev.attempts+1,reading=prev.attempts?prev.reading*.72+q*.28:q;
  let coldRead=prev.coldRead,coldReadAttempts=prev.coldReadAttempts,lastColdReadAt=prev.lastColdReadAt;
+ let flowRead=prev.flowRead,flowAttempts=prev.flowAttempts,lastFlowAt=prev.lastFlowAt,flowFormIds=uniq(prev.flowFormIds||[]),flowActions=uniq(prev.flowActions||[]);
  const seenVariantIds=uniq([...(prev.seenVariantIds||[]),event?.variantId]);
  let coldVariantIds=uniq(prev.coldVariantIds||[]),coldHarmonyFieldIds=uniq(prev.coldHarmonyFieldIds||[]),coldVariantHarmonyKeys=uniq(prev.coldVariantHarmonyKeys||[]),coldFormIds=uniq(prev.coldFormIds||[]),coldFormContextKeys=uniq(prev.coldFormContextKeys||[]),coldFormPositionKeys=uniq(prev.coldFormPositionKeys||[]);
  if(cold){
@@ -20,8 +21,13 @@ export function applyEventResult(record,event,result,now=Date.now()){
    if(Number.isFinite(event?.formPosition))coldFormPositionKeys=uniq([...coldFormPositionKeys,`${event.form}@${event.familyId}@${event.formPosition}`]);
   }
  }
- const basis=cold?coldRead:reading,days=basis<.6?1:basis<.78?2:basis<.9?4:7;
- return{...prev,familyId:event?.familyId||prev.familyId,reading:clamp(reading),coldRead:clamp(coldRead),attempts,coldReadAttempts,successes:prev.successes+(result?.stars>=3?1:0),lastSeenAt:now,lastColdReadAt,dueAt:now+days*86400000,seenVariantIds,coldVariantIds,coldHarmonyFieldIds,coldVariantHarmonyKeys,coldFormIds,coldFormContextKeys,coldFormPositionKeys};
+ if(flow){
+  flowRead=prev.flowAttempts?prev.flowRead*.62+q*.38:q;flowAttempts++;lastFlowAt=now;
+  if(q>=.7&&event?.form)flowFormIds=uniq([...flowFormIds,event.form]);
+  if(q>=.7&&event?.flowAction)flowActions=uniq([...flowActions,event.flowAction]);
+ }
+ const basis=cold?coldRead:flow?flowRead:reading,days=basis<.6?1:basis<.78?2:basis<.9?4:7;
+ return{...prev,familyId:event?.familyId||prev.familyId,reading:clamp(reading),coldRead:clamp(coldRead),flowRead:clamp(flowRead),attempts,coldReadAttempts,flowAttempts,successes:prev.successes+(result?.stars>=3?1:0),lastSeenAt:now,lastColdReadAt,lastFlowAt,dueAt:now+days*86400000,seenVariantIds,coldVariantIds,coldHarmonyFieldIds,coldVariantHarmonyKeys,coldFormIds,coldFormContextKeys,coldFormPositionKeys,flowFormIds,flowActions};
 }
 function requiredColdVariants(familyId){
  const family=familyById(familyId);if(!family)return[];
