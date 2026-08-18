@@ -3,8 +3,8 @@ import{variantById}from'./variantRegistry.js';
 import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
-import{buildClosingFlowEvent,buildClosingTradeEvent}from'./flow.js';
-import{cBluesConnectReady,cBluesTradeReady,cBluesStageReady}from'./mastery.js';
+import{buildClosingFlowEvent,buildClosingTradeEvent,buildOneChorusFlowEvent}from'./flow.js';
+import{cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesStageReady}from'./mastery.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
 
@@ -121,9 +121,15 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  }
  if(!events.length)throw new Error('session has no events');
  if(musicalForm?.closingFlowProgram){
-   const requestedFlow=['CONNECT','TRADE','RECALL'].includes(flowActionOverride)?flowActionOverride:null;
-   const flowAction=requestedFlow||(!cBluesConnectReady(familyMastery)?'CONNECT':!cBluesTradeReady(familyMastery)?'TRADE':'RECALL');
-   if(flowAction==='TRADE'&&events.length>=1){
+   const requestedFlow=['CONNECT','TRADE','RECALL','ONE_CHORUS'].includes(flowActionOverride)?flowActionOverride:null;
+   const flowAction=requestedFlow||(!cBluesConnectReady(familyMastery)?'CONNECT':!cBluesTradeReady(familyMastery)?'TRADE':!cBluesRecallReady(familyMastery)?'RECALL':'ONE_CHORUS');
+   if(flowAction==='ONE_CHORUS'&&events.length>=4){
+     const first=events.at(-4),last=events.at(-1),span=last.endBeat-first.startBeat;
+     if(Math.abs(span-64)<.001){
+       const chorus=buildOneChorusFlowEvent({musicalForm,startBeat:first.startBeat,endBeat:last.endBeat,key,bpm,eventId:`${first.eventId}-one-chorus`});
+       if(chorus)events.splice(events.length-4,4,chorus);
+     }
+   }else if(flowAction==='TRADE'&&events.length>=1){
      const last=events.at(-1),span=last.endBeat-last.startBeat;
      if(Math.abs(span-16)<.001){
        const trade=buildClosingTradeEvent({musicalForm,startBeat:last.startBeat,endBeat:last.endBeat,key,bpm,eventId:`${last.eventId}-trade`});

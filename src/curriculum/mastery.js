@@ -50,7 +50,8 @@ export function hasFlowAction(record,formId,action,minFlow=.7){return Boolean(re
 export function cBluesConnectReady(familyMastery={}){return hasFlowAction(familyMastery?.['g-to-f-surfaces'],'c-blues-12','CONNECT');}
 export function cBluesTradeReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesConnectReady(familyMastery)&&hasFlowAction(r,'c-blues-12','TRADE');}
 export function cBluesRecallReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesTradeReady(familyMastery)&&hasFlowAction(r,'c-blues-12','RECALL');}
-export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesRecallReady(familyMastery);}
+export function cBluesOneChorusReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesRecallReady(familyMastery)&&hasFlowAction(r,'c-blues-12','ONE_CHORUS');}
+export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesOneChorusReady(familyMastery);}
 export function deriveStageProgress(familyMastery,currentStage=0,maxStage=3){
  let stage=clamp(Number(currentStage)||0,0,maxStage),advanced=false;
  const required=familiesForStage(stage);

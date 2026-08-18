@@ -22,6 +22,9 @@ export const MUSICAL_FORMS=[
       tradeAudiateBeats:4,
       tradeSingBeats:4,
       tradeSpaceBeats:4,
+      oneChorusRepeats:3,
+      oneChorusPreReadBeats:16,
+      oneChorusTitle:'1 Chorus · Keep the Form',
     },
     timeline:[
       {beat:0,chord:'C7'},

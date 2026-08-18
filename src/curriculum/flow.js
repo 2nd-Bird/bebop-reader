@@ -72,3 +72,29 @@ export function buildClosingFlowEvent({musicalForm,startBeat,endBeat,key='C',bpm
     scoreModel:{id:`${musicalForm.formId}-closing-flow`,title:program.title||'Connect the Move',key,bpm,meter:[4,4],notes:connected.notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats:connected.totalBeats,unitBeats:4,movePolicy:'NONE',sourceVariantIds:[...program.variantIds]}
   };
 }
+
+export function buildOneChorusFlowEvent({musicalForm,startBeat,endBeat,key='C',bpm=60,eventId='flow-one-chorus'}={}){
+  const program=musicalForm?.closingFlowProgram;if(!program)return null;
+  const repeats=Number(program.oneChorusRepeats??3),beatsPerPart=program.beatsPerPart||4,preReadBeats=Number(program.oneChorusPreReadBeats??16);
+  if(!Number.isInteger(repeats)||repeats<1)throw new Error(`${musicalForm.formId}: one-chorus repeats must be a positive integer`);
+  const variantIds=Array.from({length:repeats},()=>program.variantIds).flat();
+  const connected=connectVariants(variantIds,{beatsPerPart});
+  if(connected.sources.some(source=>source.familyId!==program.familyId))throw new Error(`${musicalForm.formId}: one-chorus FLOW must stay inside ${program.familyId}`);
+  if(Math.abs(connected.totalBeats-musicalForm.lengthBeats)>.001)throw new Error(`${musicalForm.formId}: one-chorus score must span exactly ${musicalForm.lengthBeats} beats`);
+  const fieldBeats=endBeat-startBeat;
+  if(fieldBeats+1e-9<preReadBeats+connected.totalBeats)throw new Error(`${musicalForm.formId}: one-chorus field needs ${preReadBeats+connected.totalBeats} beats`);
+  const singEndBeat=endBeat,singStartBeat=singEndBeat-connected.totalBeats,prepareBeat=singStartBeat-preReadBeats;
+  if(prepareBeat<startBeat-1e-9)throw new Error(`${musicalForm.formId}: one-chorus pre-read starts before its field`);
+  const localStart=((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats;
+  if(Math.abs(localStart)>.001)throw new Error(`${musicalForm.formId}: one-chorus SING must begin on the form downbeat`);
+  const harmonyTimeline=sliceFormHarmony(musicalForm,singStartBeat,connected.totalBeats),harmonyContext=harmonyTimeline[0]?.chord||key;
+  const title=program.oneChorusTitle||'1 Chorus · Keep the Form';
+  return{
+    eventId,familyId:program.familyId,variantId:null,title,key,
+    harmonyFieldId:`form:${musicalForm.formId}:one-chorus`,harmonyContext,harmonyTimeline,tonalFieldId:null,
+    harmonyTransfer:true,tonalFieldTransfer:false,formTransfer:true,movePolicy:'NONE',form:musicalForm.formId,fieldBeats,formPosition:0,
+    startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:'FLOW',modelPolicy:'NONE',morphPolicy:'NONE',scoringPolicy:'FLOW',
+    flowAction:'ONE_CHORUS',scoreVisibility:'FULL',visibleBeats:connected.totalBeats,flowSourceVariantIds:variantIds,
+    scoreModel:{id:`${musicalForm.formId}-one-chorus-flow`,title,key,bpm,meter:[4,4],notes:connected.notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats:connected.totalBeats,unitBeats:4,movePolicy:'NONE',sourceVariantIds:variantIds}
+  };
+}

@@ -55,6 +55,6 @@ const view=fs.readFileSync(new URL('./src/ui/sessionView.js',import.meta.url),'u
 const player=fs.readFileSync(new URL('./src/session/player.js',import.meta.url),'utf8');
 assert(engine.includes('event.modelScoreModel || event.scoreModel'),'engine can schedule a distinct TRADE call while scoring the visible response phrase');
 assert(view.includes("event.flowAction==='TRADE'?'聴いて、返す'"),'learner-facing TRADE copy stays experiential and minimal');
-assert(player.includes("['CONNECT','TRADE','RECALL']"),'debug harness can deliberately expose TRADE without changing normal progression');
+assert(player.includes("['CONNECT','TRADE','RECALL','ONE_CHORUS']"),'debug harness keeps TRADE available while adding the later one-chorus state');
 
 console.log('OK: Stage 14 TRADE is a four-beat call → silent audiate/read → four-beat staff response, reusing known material inside the continuous C Blues form');
