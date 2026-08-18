@@ -8,6 +8,7 @@ import { scoreEvent } from '../scoring/eventScoring.js';
 import { summarizeSession } from '../scoring/sessionScoring.js';
 import { createTransport } from './transport.js';
 import { createTimeline } from './timeline.js';
+import { recoveryDisplayState } from './recoveryDisplay.js';
 
 const clamp01 = n => Math.max(0, Math.min(1, n));
 const MODEL_VOLUME = .34;
@@ -121,13 +122,15 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     view.setCount(null);
     const state = timeline.phaseAtBeat(beat), event = state.event;
     let phase = state.phase;
-    const echo = echoWindows.find(x=>beat>=x.startBeat&&beat<x.endBeat); if(echo)phase='ECHO';
+    const displayState=recoveryDisplayState({event,beat,echoWindows,events:timeline.events});
+    if(displayState.echo)phase='ECHO';
+    const displayEvent=displayState.event,displayToken=displayState.displayToken;
     if (event?.eventId !== activeEventId) { activeEventId = event?.eventId || null; displayedEventId = null; view.clearScore(); }
-    if (event && beat >= event.prepareBeat && displayedEventId !== event.eventId) { displayedEventId = event.eventId; view.showEvent(event, event.scoreModel); }
+    if (displayEvent && (displayState.echo || (event && beat >= event.prepareBeat)) && displayedEventId !== displayToken) { displayedEventId = displayToken; view.showEvent(displayEvent, displayEvent.scoreModel); }
     if (phase !== lastPhase) { lastPhase = phase; view.setPhase(phase); }
     if (event && beat >= event.singEndBeat && !scored.has(event.eventId)) { const result = scoreOne(event); if (result) view.showFeedback(result); }
-    const noteProgress = event ? clamp01((beat - event.singStartBeat) / (event.singEndBeat - event.singStartBeat)) : 0;
-    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event, phase, audio: audioDebug() });
+    const noteProgress = displayState.echo ? displayState.progress : event ? clamp01((beat - event.singStartBeat) / (event.singEndBeat - event.singStartBeat)) : 0;
+    view.update({ beat, bar: pos.bar, beatInBar: pos.beatInBar, totalBeats: plan.totalBeats, progress: noteProgress, event: displayEvent, phase, audio: audioDebug() });
     raf = requestAnimationFrame(frame);
   }
 
