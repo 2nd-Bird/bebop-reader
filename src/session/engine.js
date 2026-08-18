@@ -24,8 +24,8 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
 
   function scheduleFutureModels(fromBeat = 0) {
     for (const event of timeline.events) {
-      if (event.modelPolicy === 'TEACHER_CALL' && event.modelStartBeat >= fromBeat) {
-        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: MODEL_VOLUME, type: 'triangle' }));
+      if (event.modelPolicy !== 'NONE' && Number.isFinite(event.modelStartBeat) && event.modelStartBeat >= fromBeat) {
+        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.modelScoreModel || event.scoreModel, startBeat: event.modelStartBeat, volume: MODEL_VOLUME, type: 'triangle' }));
       }
     }
     for (const echo of echoWindows) {
