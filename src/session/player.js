@@ -12,7 +12,7 @@ export function mountSession({ app, navigate }) {
   const debug=params.get('debug')==='1',signals=schedulerSignals(state);
   const formId=debug&&params.get('form')?params.get('form'):null;
   const requestedFlow=debug?(params.get('flow')||'').toUpperCase():'';
-  const flowActionOverride=['CONNECT','RECALL'].includes(requestedFlow)?requestedFlow:null;
+  const flowActionOverride=['CONNECT','TRADE','RECALL'].includes(requestedFlow)?requestedFlow:null;
   const requestedEvents=debug?Number(params.get('events')):NaN,requestedBeats=debug?Number(params.get('beats')):NaN;
   const eventCount=Number.isInteger(requestedEvents)&&requestedEvents>=1&&requestedEvents<=20?requestedEvents:20;
   const targetSessionBeats=Number.isFinite(requestedBeats)&&requestedBeats>=16?requestedBeats:320;

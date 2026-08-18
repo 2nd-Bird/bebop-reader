@@ -16,6 +16,12 @@ export const MUSICAL_FORMS=[
       beatsPerPart:4,
       audiateBeats:8,
       responseBeats:4,
+      tradeCallVariantId:'gf-cell-fan',
+      tradeResponseVariantId:'gf-cell-return',
+      tradeCallBeats:4,
+      tradeAudiateBeats:4,
+      tradeSingBeats:4,
+      tradeSpaceBeats:4,
     },
     timeline:[
       {beat:0,chord:'C7'},
