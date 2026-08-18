@@ -1,8 +1,16 @@
 import {SCORE_H,diatonicStep,scoreWidthFor,buildGeometry,noteLayout,timelineFor,xAtBeat,beatX} from './notation/layout.js';
 
 const NS='http://www.w3.org/2000/svg';
+const KEY_ACCIDENTALS={F:{B:'b'},Bb:{B:'b',E:'b'}};
 function el(name,attrs={}){const n=document.createElementNS(NS,name);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v)));return n;}
-function accidental(p){return String(p||'').includes('#')?'♯':String(p||'').includes('b')?'♭':'';}
+function accidentalGlyph(token){return token==='#'?'♯':token==='b'?'♭':token==='n'?'♮':'';}
+export function displayAccidental(pitch,key='C'){
+  const m=String(pitch||'').match(/^([A-G])([#b]?)(-?\d+)$/);if(!m)return '';
+  const [,letter,actual]=m,expected=KEY_ACCIDENTALS[key]?.[letter]||'';
+  if(actual===expected)return '';
+  if(!actual&&expected)return '♮';
+  return accidentalGlyph(actual);
+}
 function resultColor(resultNotes,n){if(!resultNotes||n.rest)return '#111';const r=resultNotes.find(x=>x.startBeat===n.startBeat&&x.target===n.pitch);return r?(r.readOk?'#248a67':'#d35f52'):'#111';}
 export const flagCountForDuration=duration=>duration<=.25+1e-9?2:duration<=.5+1e-9?1:0;
 
@@ -46,7 +54,7 @@ function drawNotes(svg,ex,g,resultNotes){
   layout.forEach((pos,i)=>{
     const n=ex.notes[i],x=pos.x;if(n.rest){drawRest(svg,x,n.duration,g);return;}
     const y=pos.y,step=diatonicStep(n.pitch),color=resultColor(resultNotes,n);drawLedger(svg,x,y,step,g);
-    const acc=accidental(n.pitch);if(acc){const a=el('text',{x:x-18,y:y+6,'text-anchor':'middle','font-size':22,fill:color,'font-family':'serif'});a.textContent=acc;svg.appendChild(a);}
+    const acc=displayAccidental(n.pitch,ex.key||'C');if(acc){const a=el('text',{x:x-18,y:y+6,'text-anchor':'middle','font-size':22,fill:color,'font-family':'serif'});a.textContent=acc;svg.appendChild(a);}
     const filled=n.duration<=1;svg.appendChild(el('ellipse',{cx:x,cy:y,rx:n.duration===4?8.8:7.2,ry:n.duration===4?5.1:4.7,fill:filled?color:'#f2ead8',stroke:color,'stroke-width':filled?1:2,transform:`rotate(-18 ${x} ${y})`,'data-note-index':i}));
     if(n.duration===4)return;
     const bm=beamMap.get(i),up=bm?bm.up:step<4,stemX=x+(up?6:-6),stemEnd=bm?bm.beamY:y+(up?-34:34);svg.appendChild(el('line',{x1:stemX,x2:stemX,y1:y,y2:stemEnd,stroke:color,'stroke-width':1.8}));
@@ -62,7 +70,7 @@ export function renderNotation(container,ex,{resultNotes=null,showTime=true}={})
   container.style.position='relative';container.style.width=`${canvasWidth}px`;container.style.height=`${SCORE_H}px`;
   const base=document.createElement('div');base.className='score-base';base.style.width=`${canvasWidth}px`;base.style.height=`${SCORE_H}px`;container.appendChild(base);
   const VF=window.VexFlow,renderer=new VF.Renderer(base,VF.Renderer.Backends.SVG);renderer.resize(canvasWidth,SCORE_H);const ctx=renderer.getContext();
-  const stave=new VF.Stave(10,24,canvasWidth-20);stave.addClef('treble');if(showTime)stave.addTimeSignature('4/4');stave.setContext(ctx).draw();
+  const stave=new VF.Stave(10,24,canvasWidth-20);stave.addClef('treble');if(ex.key&&ex.key!=='C')stave.addKeySignature(ex.key);if(showTime)stave.addTimeSignature('4/4');stave.setContext(ctx).draw();
   const y0=stave.getYForLine(0),y4=stave.getYForLine(4);const g=buildGeometry(ex,{canvasWidth,staffY0:y0,staffY4:y4,noteStartX:stave.getNoteStartX()+10});
   const baseSvg=base.querySelector('svg');if(baseSvg){baseSvg.setAttribute('viewBox',`0 0 ${canvasWidth} ${SCORE_H}`);baseSvg.setAttribute('width',canvasWidth);baseSvg.setAttribute('height',SCORE_H);baseSvg.style.display='block';}
   const overlay=el('svg',{viewBox:`0 0 ${canvasWidth} ${SCORE_H}`,width:canvasWidth,height:SCORE_H,'aria-hidden':'true'});overlay.classList.add('score-note-layer');Object.assign(overlay.style,{position:'absolute',inset:'0',width:`${canvasWidth}px`,height:`${SCORE_H}px`,pointerEvents:'none',overflow:'visible'});container.appendChild(overlay);
