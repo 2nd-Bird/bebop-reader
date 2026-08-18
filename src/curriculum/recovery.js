@@ -20,6 +20,11 @@ export function scheduleDelayedRetry(events,missedEvent,{minGapEvents=2}={}){
   target.variantId=missedEvent.variantId;
   target.scoreModel=missedEvent.scoreModel;
   target.singEndBeat=target.singStartBeat+requiredBeats;
+  target.key=missedEvent.key||target.key;
+  target.sourceKey=missedEvent.sourceKey||target.sourceKey||'C';
+  target.keyTransfer=Boolean(missedEvent.keyTransfer);
+  target.sourceHarmonyFieldId=missedEvent.sourceHarmonyFieldId||null;
+  target.sourceHarmonyContext=missedEvent.sourceHarmonyContext||null;
   target.harmonyFieldId=missedEvent.harmonyFieldId;
   target.harmonyContext=missedEvent.harmonyContext;
   target.harmonyTimeline=(missedEvent.harmonyTimeline||[]).map(x=>({...x}));
