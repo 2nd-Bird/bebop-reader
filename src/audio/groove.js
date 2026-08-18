@@ -17,6 +17,11 @@ const pushHarmony=(out,event,anchor)=>{
   for(const h of event.harmonyTimeline||[]){const beat=anchor+Number(h.beat||0);if(beat<(event.endBeat??Infinity))out.push({beat,chord:h.chord});}
 };
 export function sessionHarmonyPulses(plan){
+  if(plan?.formHarmonyTimeline?.length){
+    const byBeat=new Map();
+    for(const x of plan.formHarmonyTimeline.slice().sort((a,b)=>a.beat-b.beat))byBeat.set(Number(x.beat),{beat:Number(x.beat),chord:x.chord});
+    return [...byBeat.values()].sort((a,b)=>a.beat-b.beat);
+  }
   const out=[];
   for(const event of plan?.events||[]){
     const local=event.harmonyTimeline?.length?event.harmonyTimeline:[{beat:0,chord:event.harmonyContext||plan.key||'C'}];

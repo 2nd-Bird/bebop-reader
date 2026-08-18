@@ -2,6 +2,7 @@ import { loadStateV3 } from '../storage-v3.js';
 import { schedulerSignals } from '../curriculum/mastery.js';
 import { STAGES, stageByNumber } from '../curriculum/stages.js';
 import { familyById, familiesForStage } from '../curriculum/phraseFamilyRegistry.js';
+import { musicalFormById } from '../curriculum/musicalForms.js';
 import { isFamilyMastered } from '../curriculum/mastery.js';
 
 const esc=s=>String(s??'').replace(/[&<>']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;'}[c]));
@@ -13,24 +14,31 @@ function shell(app,html,{active='home'}={}){
   return app.querySelector('.home-v09');
 }
 function familyMetric(record){if(!record?.attempts)return 0;const reading=Number(record.reading)||0,cold=record.coldReadAttempts?Number(record.coldRead)||0:0;return pct(reading*.45+cold*.55);}
+function displayFamiliesForStage(stage){
+  const direct=familiesForStage(stage.stage);if(direct.length)return direct;
+  return (stage.unlock?.integrationFamilyIds||[]).map(familyById).filter(Boolean);
+}
 function currentSnapshot(state){
-  const stageNo=state.stageProgress?.currentStage??0,stage=stageByNumber(stageNo)||STAGES[0],families=familiesForStage(stageNo),signals=schedulerSignals(state),due=signals.dueFamilyIds.map(familyById).filter(Boolean),weak=signals.weakFamilyIds.map(familyById).filter(Boolean);
-  const focus=[...due,...weak,...families].filter((f,i,a)=>f&&a.findIndex(x=>x.familyId===f.familyId)===i).slice(0,2);
+  const stageNo=state.stageProgress?.currentStage??0,stage=stageByNumber(stageNo)||STAGES[0],families=displayFamiliesForStage(stage),signals=schedulerSignals(state),due=signals.dueFamilyIds.map(familyById).filter(Boolean),weak=signals.weakFamilyIds.map(familyById).filter(Boolean);
+  const focus=[...due.filter(f=>families.includes(f)),...weak.filter(f=>families.includes(f)),...families].filter((f,i,a)=>f&&a.findIndex(x=>x.familyId===f.familyId)===i).slice(0,2);
   const readiness=families.length?Math.round(families.reduce((sum,f)=>sum+familyMetric(state.familyMastery?.[f.familyId]),0)/families.length):0;
-  return{stageNo,stage,families,due,weak,focus,readiness};
+  const forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean),activeForm=forms.find(f=>f.status==='ACTIVE')||null;
+  return{stageNo,stage,families,due,weak,focus,readiness,forms,activeForm};
 }
 export function renderV09Home({app,navigate}){
   const state=loadStateV3(),x=currentSnapshot(state),last=state.lastSessionResult;
-  const focusText=x.focus.length?x.focus.map(f=>f.title).join(' · '):x.stage.title;
+  const familyText=x.focus.length?x.focus.map(f=>f.title).join(' · '):x.stage.title;
+  const focusText=x.activeForm?`${x.activeForm.title} · ${familyText}`:familyText;
   const root=shell(app,`<section class="hero v09-hero"><div class="eyebrow">TODAY · CONTINUOUS SESSION</div><h1>音楽を止めずに、<br><em>読む。</em></h1><p>聴く → 見る → 頭で鳴らす → 歌う。失敗しても流れは止めず、あとで同じ動きへ戻る。</p></section><section class="today-card card v09-today"><div class="today-top"><div><span class="label">STAGE ${x.stageNo} · ${esc(x.stage.title)}</span><h2>${esc(focusText)}</h2></div><div class="tempo-badge"><span>♩</span><b>60</b></div></div><div class="v09-flow-strip"><span>LISTEN</span><i>→</i><span>SEE</span><i>→</i><span>SING</span><i>→</i><span>FLOW</span></div><div class="v09-gate"><small>次にできること</small><b>${esc(x.stage.gate)}</b></div><button class="primary big" id="v09-start">セッションを始める <span>→</span></button><small class="v09-duration">約5分 · 音楽は止まりません</small></section><section class="metrics-grid"><div class="metric card"><span>STREAK</span><b>${state.streak||0}<small>日</small></b><em>${state.totalSessions||0} sessions</em></div><div class="metric card"><span>READINESS</span><b>${x.readiness}<small>%</small></b><em>${x.due.length?`${x.due.length} review due`:'on track'}</em></div></section>${last?`<section class="card v09-last"><span class="label">LAST SESSION</span><div><b>${last.stars||0}★</b><span>Reading ${last.readScore??'—'}</span><span>Pitch ${last.pitch??'—'}</span><span>Flow ${last.flow??'—'}</span></div></section>`:''}<section class="locked-worlds"><div class="world active"><b>C</b><span>Major</span><small>NOW</small></div><div class="world"><b>F</b><span>Major</span><small>LATER</small></div><div class="world"><b>B♭</b><span>Major</span><small>LATER</small></div></section>`,{active:'home'});
   bindNav(root,navigate);root.querySelector('#v09-start').onclick=()=>navigate('/session');
 }
 export function renderV09Library({app,navigate}){
   const state=loadStateV3(),current=state.stageProgress?.currentStage??0,unlocked=new Set(state.stageProgress?.unlockedStages||[0]);
   const sections=STAGES.map(stage=>{
-    const open=unlocked.has(stage.stage)||stage.stage===current,families=familiesForStage(stage.stage);
-    const rows=families.map(f=>`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(f.title)}</b><small>${open?'五線譜から歌って身につける動き':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${open?'READ · SING':'LOCKED'}</span></div></div>`).join('');
-    return`<section class="v09-family-list"><div class="group-head"><div><span class="eyebrow">STAGE ${stage.stage}</span><h2>${esc(stage.title)}</h2><small>${esc(stage.gate)}</small></div></div>${rows}</section>`;
+    const open=unlocked.has(stage.stage)||stage.stage===current,direct=familiesForStage(stage.stage),forms=(stage.unlock?.forms||[]).map(musicalFormById).filter(Boolean);
+    const familyRows=direct.map(f=>`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(f.title)}</b><small>${open?'五線譜から歌って身につける動き':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${open?'READ · SING':'LOCKED'}</span></div></div>`).join('');
+    const formRows=forms.map(form=>{const active=open&&form.status==='ACTIVE';return`<div class="v09-family-row ${open?'':'locked'}"><div><b>${esc(form.title)}</b><small>${active?'既知の動きをformの中で読み、つなげる':open?'次の音楽世界として準備中':'前のStageが安定すると開きます'}</small></div><div class="v09-family-score"><span>${active?'READ · FLOW':open?'NEXT':'LOCKED'}</span></div></div>`;}).join('');
+    return`<section class="v09-family-list"><div class="group-head"><div><span class="eyebrow">STAGE ${stage.stage}</span><h2>${esc(stage.title)}</h2><small>${esc(stage.gate)}</small></div></div>${familyRows}${formRows}</section>`;
   }).join('');
   const root=shell(app,`<section class="page-title"><span class="eyebrow">CURRICULUM · C</span><h1>歌って身につける順番。</h1><p>理論問題ではなく、普通の譜面が少しずつ育っていきます。</p></section>${sections}`,{active:'library'});
   bindNav(root,navigate);
