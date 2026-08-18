@@ -5,7 +5,7 @@ const SHARP_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 export const KEY_TRANSFER_POLICY=[
   {key:'C',semitoneFromC:0,status:'ACTIVE',pilotMaxStage:14},
   {key:'F',semitoneFromC:5,status:'DEBUG_PILOT',pilotMaxStage:3},
-  {key:'Bb',semitoneFromC:10,status:'PLANNED',pilotMaxStage:null},
+  {key:'Bb',semitoneFromC:-2,status:'DEBUG_PILOT',pilotMaxStage:3},
 ];
 
 export const keyTransferPolicy=key=>KEY_TRANSFER_POLICY.find(x=>x.key===key)||null;

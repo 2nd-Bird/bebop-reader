@@ -13,7 +13,7 @@ export function mountSession({ app, navigate }) {
   const formId=debug&&params.get('form')?params.get('form'):null;
   const requestedFlow=debug?(params.get('flow')||'').toUpperCase():'';
   const flowActionOverride=['REPEAT','MUTATION','CONNECT','TRADE','RECALL','ONE_CHORUS'].includes(requestedFlow)?requestedFlow:null;
-  const requestedKey=debug?(params.get('key')||'C'): 'C',key=debug&&['C','F'].includes(requestedKey)?requestedKey:'C';
+  const requestedKey=debug?(params.get('key')||'C'):'C',key=debug&&['C','F','Bb'].includes(requestedKey)?requestedKey:'C';
   const requestedEvents=debug?Number(params.get('events')):NaN,requestedBeats=debug?Number(params.get('beats')):NaN;
   const eventCount=Number.isInteger(requestedEvents)&&requestedEvents>=1&&requestedEvents<=20?requestedEvents:20;
   const targetSessionBeats=Number.isFinite(requestedBeats)&&requestedBeats>=16?requestedBeats:320;
