@@ -1,6 +1,8 @@
 import {connectVariants} from './flow.js';
 import {sliceFormHarmony} from './musicalForms.js';
+import {transposeHarmonyTimelineFromC,transposeNotesFromC} from './keyTransfer.js';
 
+const keyedFieldId=(base,key)=>key==='C'?base:`${base}@key:${key}`;
 export function buildPairFlowEvent({musicalForm,startBeat,endBeat,key='C',bpm=60,eventId='flow-pair',flowAction='REPEAT'}={}){
   const program=musicalForm?.closingFlowProgram;if(!program)return null;
   if(!['REPEAT','MUTATION'].includes(flowAction))throw new Error(`unsupported pair FLOW action ${flowAction}`);
@@ -13,15 +15,15 @@ export function buildPairFlowEvent({musicalForm,startBeat,endBeat,key='C',bpm=60
   const fieldBeats=endBeat-startBeat,preReadBeats=4,responseBeats=4;
   if(Math.abs(fieldBeats-(preReadBeats+connected.totalBeats+responseBeats))>.001)throw new Error(`${musicalForm.formId}: pair FLOW must fit one 16-beat field`);
   const prepareBeat=startBeat,singStartBeat=startBeat+preReadBeats,singEndBeat=singStartBeat+connected.totalBeats;
-  const harmonyTimeline=sliceFormHarmony(musicalForm,singStartBeat,connected.totalBeats),harmonyContext=harmonyTimeline[0]?.chord||key;
-  const formPosition=Math.floor((((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats)/4);
-  const title=flowAction==='REPEAT'?'Repeat · Keep the Move':'Mutation · Let It Change';
+  const sourceHarmonyTimeline=sliceFormHarmony(musicalForm,singStartBeat,connected.totalBeats),sourceHarmonyContext=sourceHarmonyTimeline[0]?.chord||'C';
+  const harmonyTimeline=transposeHarmonyTimelineFromC(sourceHarmonyTimeline,key),harmonyContext=harmonyTimeline[0]?.chord||key,notes=transposeNotesFromC(connected.notes,key);
+  const formPosition=Math.floor((((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats)/4),title=flowAction==='REPEAT'?'Repeat · Keep the Move':'Mutation · Let It Change',baseField=`form:${musicalForm.formId}:${flowAction.toLowerCase()}`;
   return{
-    eventId,familyId:program.familyId,variantId:null,title,key,
-    harmonyFieldId:`form:${musicalForm.formId}:${flowAction.toLowerCase()}`,harmonyContext,harmonyTimeline,tonalFieldId:null,
+    eventId,familyId:program.familyId,variantId:null,title,sourceKey:'C',key,
+    sourceHarmonyFieldId:baseField,sourceHarmonyContext,sourceHarmonyTimeline,harmonyFieldId:keyedFieldId(baseField,key),harmonyContext,harmonyTimeline,tonalFieldId:null,
     harmonyTransfer:true,tonalFieldTransfer:false,formTransfer:true,movePolicy:'NONE',form:musicalForm.formId,fieldBeats,formPosition,
     startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:'FLOW',modelPolicy:'NONE',morphPolicy:'NONE',scoringPolicy:'FLOW',
     flowAction,scoreVisibility:'FULL',visibleBeats:connected.totalBeats,flowSourceVariantIds:variantIds,
-    scoreModel:{id:`${musicalForm.formId}-${flowAction.toLowerCase()}-flow`,title,key,bpm,meter:[4,4],notes:connected.notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats:connected.totalBeats,unitBeats:4,movePolicy:'NONE',sourceVariantIds:variantIds}
+    scoreModel:{id:`${musicalForm.formId}-${flowAction.toLowerCase()}-flow`,title,sourceKey:'C',key,sourceHarmonyContext,harmonyContext,bpm,meter:[4,4],notes,chords:harmonyTimeline.map(x=>x.chord),harmonyTimeline,totalBeats:connected.totalBeats,unitBeats:4,movePolicy:'NONE',sourceVariantIds:variantIds}
   };
 }
