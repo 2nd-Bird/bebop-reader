@@ -1,0 +1,21 @@
+name: session-summary-check
+
+on:
+  pull_request:
+    paths:
+      - 'src/scoring/sessionRewards.js'
+      - 'src/session/player.js'
+      - 'src/session/engine.js'
+      - 'src/ui/sessionView.js'
+      - 'tests-session-summary.mjs'
+      - '.github/workflows/session-summary-check.yml'
+
+jobs:
+  session-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests-session-summary.mjs
