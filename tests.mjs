@@ -18,19 +18,20 @@ import {migrateV2State} from './src/storage-v3.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
 const pitches=id=>variantById(id).notes.filter(n=>!n.rest).map(n=>n.pitch);
+const structuralPitches=id=>{const v=variantById(id);return (v.structuralTargetIndices||[]).map(i=>v.notes[i]?.pitch)};
 
-// Legacy fixtures remain usable for notation/scoring regression, but are not curriculum source of truth.
+// Legacy notation/scoring fixtures remain valid but are not curriculum source of truth.
 assert(EXERCISES.length>=24,'need >=24 legacy exercises');
 for(const e of EXERCISES){
   const end=Math.max(...e.notes.map(n=>n.startBeat+n.duration));
   assert(end<=e.totalBeats+1e-9,`${e.id} exceeds totalBeats`);
   let cursor=0;
-  for(const n of e.notes){assert(Math.abs(n.startBeat-cursor)<1e-8,`${e.id} has unsupported gap at ${cursor}->${n.startBeat}`);cursor=n.startBeat+n.duration;}
+  for(const n of e.notes){assert(Math.abs(n.startBeat-cursor)<1e-8,`${e.id} unsupported gap ${cursor}->${n.startBeat}`);cursor=n.startBeat+n.duration;}
   assert(Math.abs(cursor-e.totalBeats)<1e-8,`${e.id} duration sum ${cursor} != ${e.totalBeats}`);
   for(const n of e.notes)assert([0.5,1,2,4].includes(n.duration),`${e.id} unsupported duration ${n.duration}`);
 }
 
-// Pitch detector + existing coarse sight-reading score.
+// Pitch detector + coarse sight-reading scoring.
 const sr=44100,hz=440,size=2048,b=new Float32Array(size);for(let i=0;i<size;i++)b[i]=.3*Math.sin(2*Math.PI*hz*i/sr);
 const detected=yin(b,sr);assert(detected.hz&&Math.abs(detected.hz-hz)<2,`YIN failed ${detected.hz}`);
 const legacy=EXERCISES.find(x=>x.id==='s01'),spb=60/legacy.bpm,samples=[];
@@ -46,14 +47,16 @@ transport.pause();fakeCtx.currentTime=320;assert(Math.abs(transport.currentBeat(
 const timeline=createTimeline({totalBeats:32,events:[{eventId:'e1',startBeat:0,prepareBeat:4,modelStartBeat:0,modelEndBeat:4,singStartBeat:8,singEndBeat:12,endBeat:16},{eventId:'e2',startBeat:16,prepareBeat:20,singStartBeat:24,singEndBeat:28,endBeat:32}]});
 assert(timeline.phaseAtBeat(2).phase==='MODEL','timeline model');assert(timeline.phaseAtBeat(6).phase==='AUDIATE','timeline audiate');assert(timeline.phaseAtBeat(9).phase==='SING','timeline sing');assert(timeline.phaseAtBeat(13).phase==='FEEDBACK','timeline feedback');
 
+// Session-wide absolute samples still score only the Event SING window.
 const p01=EXERCISES.find(x=>x.id==='p01'),scoringCtx={currentTime:96},scoringTransport=createTransport({audioContext:scoringCtx,bpm:60,beatsPerBar:4});scoringTransport.startAt(100);
 const scoringEvent={eventId:'score-1',singStartBeat:8,singEndBeat:12},absoluteSamples=[];
 for(const n of p01.notes){if(n.rest)continue;for(let t=n.startBeat;t<n.startBeat+n.duration;t+=.05)absoluteSamples.push({t:scoringTransport.timeAtBeat(8+t)+.02,hz:midiToFreq(n.midi),clarity:.95,rms:.1});}
 const eventScore=scoreEvent({event:scoringEvent,scoreModel:p01,samples:absoluteSamples,transport:scoringTransport,latencyMs:0});assert(eventScore.pitch>95&&eventScore.time>90&&eventScore.flow>90,'event scoring regression');
 
-// Curriculum contracts.
+// Curriculum contracts are stage-extensible: adding a later Stage must not invalidate prior stages merely by count.
 assert(validateCurriculum(),'curriculum validation');
-assert(STAGES.length===7,`stage count ${STAGES.length}`);assert(PHRASE_FAMILIES.length===9,`family count ${PHRASE_FAMILIES.length}`);
+assert(STAGES.length>=8,'roadmap must retain Stage 0-7');assert(PHRASE_FAMILIES.length>=10,'roadmap must retain prior families');
+assert(STAGES.every((s,i)=>s.stage===i),`stages must remain contiguous 0-${STAGES.length-1}`);
 assert(VARIANTS.every(v=>!('harmonyTimeline' in v)&&!('harmonyFieldId' in v)),'Phrase Variant must not own harmony assignment');
 for(const v of VARIANTS)if(v.parentVariant)assert(variantById(v.parentVariant)?.familyId===v.familyId,`${v.variantId} parent family`);
 
@@ -72,37 +75,39 @@ assert(modelSchedule({scoreModel:teacher.scoreModel,startBeat:teacher.modelStart
 const build=curriculumPlan.events.find(x=>x.presentationMode==='BUILD'&&x.morph?.active),buildVariant=variantById(build.variantId),parent=variantById(buildVariant.parentVariant),md=morphDescriptor({variant:buildVariant,parentVariant:parent});assert(md.active&&md.type===buildVariant.morphType&&md.indices.length>0,'morph descriptor');
 const missed=curriculumPlan.events[0],echo=findEchoSlot(curriculumPlan.events,missed,new Set());assert(echo&&echo.startBeat>=missed.endBeat+16,'answer echo delayed beyond next event');const retry=scheduleDelayedRetry(curriculumPlan.events,missed,{minGapEvents:2});assert(retry&&retry.variantId===missed.variantId&&retry.presentationMode==='DELAYED_READ','delayed retry');assert(retry.startBeat>=missed.startBeat+48,'retry gap');
 
-// Stage 1 and Stage 3 invariants found in the source audit.
+// Stage 1 / 3 invariants.
 const pickup=variantById('do-sol-pickup-01');assert(pickup?.notes[0].rest&&pickup.notes[0].duration===.5&&pickup.notes[1].startBeat===.5&&pickup.notes[1].pitch==='G4','Stage 1 pickup/offbeat entry');
 for(const id of familyById('descend-to-mi').variants)assert(pitches(id).at(-1)==='E4',`${id} must preserve G→E target`);
 
-// Stage 4 — document-defined second harmonic family.
+// Stage 4 — second harmonic family.
 const stage4Family=familyById('second-harmonic-family');assert(stage4Family?.source?.curriculumRef==='教材の方針 rev.3 Stage 4','Stage 4 source');
 const stage4Harmony=stage4Family.variants.map(id=>defaultHarmonyFieldFor(variantById(id).allowedHarmony)?.timeline?.[0]?.chord);assert(stage4Harmony.join(',')==='C,C6,Am7,Dm7',`Stage 4 harmony family ${stage4Harmony}`);
 const stage4Plan=buildDailySessionPlan({currentStage:4,eventCount:20});assert(stage4Plan.focusFamilyIds[0]==='second-harmonic-family','Stage 4 family priority');
 
-// Stage 5 — dominant / ii–V–I across a barline.
+// Stage 5 — ii-V-I crosses a barline.
 const stage5Family=familyById('ii-v-i-voice-line'),stage5Seed=variantById('ii-v-i-seed'),stage5Grow=variantById('ii-v-i-grow');assert(stage5Family?.source?.curriculumRef==='教材の方針 rev.3 Stage 5','Stage 5 source');assert(stage5Seed.notes.at(-1).startBeat+stage5Seed.notes.at(-1).duration===8,'Stage 5 seed spans two bars');assert(stage5Grow.notes.some(n=>n.startBeat<4)&&stage5Grow.notes.some(n=>n.startBeat>=4),'Stage 5 phrase crosses barline');assert(defaultHarmonyFieldFor(stage5Grow.allowedHarmony).timeline.map(x=>x.chord).join(',')==='Dm7,G7,Cmaj7','Stage 5 ii-V-I field');
 const stage5Plan=buildDailySessionPlan({currentStage:5,eventCount:20}),stage5Teacher=stage5Plan.events.find(x=>x.familyId==='ii-v-i-voice-line'&&x.presentationMode==='TEACHER_CALL');assert(stage5Teacher.scoreModel.totalBeats===8&&stage5Teacher.modelEndBeat-stage5Teacher.modelStartBeat===8&&stage5Teacher.singEndBeat-stage5Teacher.singStartBeat===8,'Stage 5 two-bar teacher/answer');
 
-// Stage 6 — Two Generators. The theory is source metadata; the learner still gets ordinary staff-reading events.
+// Stage 6 — Two Generators; source theory remains metadata, learner sees ordinary notation.
 const harmonyBorn=familyById('harmony-born-descent'),lineBorn=familyById('line-born-descent');
 assert(harmonyBorn?.generatorDirection==='HARMONY_TO_LINE','Stage 6 generator A');assert(lineBorn?.generatorDirection==='LINE_TO_CELL_TO_HARMONY','Stage 6 generator B');
-assert(harmonyBorn?.source?.hamaseRef==='ex.085'&&harmonyBorn?.source?.sourcePage===58,'ex.085 traceability');assert(lineBorn?.source?.hamaseRef==='ex.269'&&lineBorn?.source?.sourcePage===234&&lineBorn?.source?.sourceWork==='Ballade','ex.269 traceability');
-assert(harmonyBorn.source.adaptation&&lineBorn.source.adaptation,'Hamase-derived reductions must declare adaptation rather than pose as source notation');
-assert(pitches('harmony-descent-seed').join(',')==='C5,B4,A4,G4','Harmony→Line seed');assert(pitches('harmony-descent-grow').join(',')==='C5,B4,A4,G4,F4,E4,D4,C4','Harmony→Line extended descent');
-assert(pitches('line-descent-seed').join(',')==='G4,F4,E4,D4','Line→Harmony seed');assert(pitches('line-descent-grow').join(',')==='G4,F4,E4,D4,C4,B3','Line→Harmony preserves descending line');
-assert(defaultHarmonyFieldFor(variantById('harmony-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='Cmaj7,Am7,FMaj7,Dm7','ex.085-derived harmony chain');
-assert(defaultHarmonyFieldFor(variantById('line-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='G7,Em7,Cmaj7','line-first cell harmony field');
-const stage6Plan=buildDailySessionPlan({currentStage:6,eventCount:20});assert(stage6Plan.focusFamilyIds.join(',')==='harmony-born-descent,line-born-descent','Stage 6 schedules both generator families');assert(stage6Plan.events.some(x=>x.familyId==='harmony-born-descent'&&x.variantId==='harmony-descent-grow'&&x.presentationMode==='BUILD'),'Stage 6 generator A grows');assert(stage6Plan.events.some(x=>x.familyId==='line-born-descent'&&x.variantId==='line-descent-grow'&&x.presentationMode==='BUILD'),'Stage 6 generator B grows');
+assert(harmonyBorn?.source?.hamaseRef==='ex.085'&&harmonyBorn?.source?.sourcePage===58,'ex.085 traceability');assert(lineBorn?.source?.hamaseRef==='ex.269'&&lineBorn?.source?.sourcePage===234&&lineBorn?.source?.sourceWork==='Ballade','ex.269 traceability');assert(harmonyBorn.source.adaptation&&lineBorn.source.adaptation,'Stage 6 adaptations declared');
+assert(pitches('harmony-descent-grow').join(',')==='C5,B4,A4,G4,F4,E4,D4,C4','Harmony→Line extended descent');assert(pitches('line-descent-grow').join(',')==='G4,F4,E4,D4,C4,B3','Line→Harmony descending line');
+assert(defaultHarmonyFieldFor(variantById('harmony-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='Cmaj7,Am7,FMaj7,Dm7','ex.085-derived harmony chain');assert(defaultHarmonyFieldFor(variantById('line-descent-grow').allowedHarmony).timeline.map(x=>x.chord).join(',')==='G7,Em7,Cmaj7','line-first harmony field');
+const stage6Plan=buildDailySessionPlan({currentStage:6,eventCount:20});assert(stage6Plan.focusFamilyIds.join(',')==='harmony-born-descent,line-born-descent','Stage 6 both generators');
 
-// Previously identified source-placement failures stay prevented.
-assert(!PHRASE_FAMILIES.some(f=>f.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become a direct user-facing family');assert(!VARIANTS.some(v=>v.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become a direct user-facing variant');assert(!PHRASE_FAMILIES.some(f=>['ex.001','ex.005','ex.001 + ex.005'].includes(f.source?.hamaseRef)),'ex.001/ex.005 must not occupy document-defined Stage 4');
+// Stage 7 — CELL identity is the declared structural target relation, not literal surface boundaries.
+const stage7Family=familyById('g-to-f-surfaces');assert(stage7Family?.invariant==='structural G→F target relation','Stage 7 structural invariant');assert(stage7Family?.structuralTargets?.join(',')==='G,F','Stage 7 target declaration');assert(stage7Family?.source?.hamaseRef==='ex.087'&&stage7Family?.source?.sourcePages?.join(',')==='59,60','Stage 7 source');assert(stage7Family?.source?.adaptation,'Stage 7 adaptation declared');
+for(const id of stage7Family.variants){const v=variantById(id);assert(structuralPitches(id).join(',')==='G4,F4',`${id} preserves structural G→F targets`);assert(v.entryRole&&v.exitRole,`${id} declares structural boundary roles`);assert(v.allowedHarmony.join(',')==='C',`${id} avoids actualizing analytic source chords`);}
+const stage7Plan=buildDailySessionPlan({currentStage:7,eventCount:20});assert(stage7Plan.focusFamilyIds[0]==='g-to-f-surfaces','Stage 7 family priority');assert(stage7Plan.events.filter(x=>x.familyId==='g-to-f-surfaces').every(x=>x.harmonyFieldId==='static-c'),'Stage 7 neutral harmony');
+
+// Known source-placement mistakes stay forbidden.
+assert(!PHRASE_FAMILIES.some(f=>f.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become direct user-facing family');assert(!VARIANTS.some(v=>v.source?.hamaseRef==='ex.029'),'ex.029 analysis must not become direct user-facing variant');assert(!PHRASE_FAMILIES.filter(f=>f.stage===4).some(f=>['ex.001','ex.005','ex.001 + ex.005'].includes(f.source?.hamaseRef)),'ex.001/ex.005 must not occupy Stage 4');
 
 // Storage/mastery: scaffolded repetition alone cannot unlock a family.
 const migrated=migrateV2State({streak:4,lastPracticeDate:'2026-08-16',settings:{latencyMs:123,solfege:true},mastery:{p01:5}});assert(migrated.streak===4&&migrated.settings.latencyMs===123&&migrated.settings.solfege===true,'v2 settings migration');assert(Object.keys(migrated.familyMastery).length===0,'legacy exercise mastery must not grant family mastery');
-let partial=emptyFamilyMastery();const seedCold={familyId:'anchor-do-sol',variantId:'anchor-cg-01',presentationMode:'COLD_READ'};partial=applyEventResult(partial,seedCold,{readScore:96,stars:5},1000);partial=applyEventResult(partial,seedCold,{readScore:94,stars:5},2000);assert(!isFamilyMastered(partial,'anchor-do-sol'),'repeating one easy variant must not master a family');
+let partial=emptyFamilyMastery();const seedCold={familyId:'anchor-do-sol',variantId:'anchor-cg-01',presentationMode:'COLD_READ'};partial=applyEventResult(partial,seedCold,{readScore:96,stars:5},1000);partial=applyEventResult(partial,seedCold,{readScore:94,stars:5},2000);assert(!isFamilyMastered(partial,'anchor-do-sol'),'repeating one easy variant must not master family');
 let fm=emptyFamilyMastery();for(const [i,variantId] of familyById('anchor-do-sol').variants.entries())fm=applyEventResult(fm,{familyId:'anchor-do-sol',variantId,presentationMode:'COLD_READ'},{readScore:95,stars:5},3000+i);assert(isFamilyMastered(fm,'anchor-do-sol'),'family mastery requires cold coverage');assert(deriveStageProgress({'anchor-do-sol':fm},0,STAGES.length-1).currentStage===1,'stage 0 unlock');
-const adaptiveState={familyMastery:{'anchor-do-sol':fm},reviewQueue:[{familyId:'anchor-do-sol',dueAt:1}]},signals=schedulerSignals(adaptiveState,5000),adaptivePlan=buildDailySessionPlan({currentStage:0,eventCount:8,...signals});assert(signals.dueFamilyIds.includes('anchor-do-sol'),'due family signal');assert(adaptivePlan.events[0].presentationMode==='COLD_READ','known due family must start cold');
+const adaptiveState={familyMastery:{'anchor-do-sol':fm},reviewQueue:[{familyId:'anchor-do-sol',dueAt:1}]},signals=schedulerSignals(adaptiveState,5000),adaptivePlan=buildDailySessionPlan({currentStage:0,eventCount:8,...signals});assert(signals.dueFamilyIds.includes('anchor-do-sol'),'due family signal');assert(adaptivePlan.events[0].presentationMode==='COLD_READ','known due family starts cold');
 
-console.log(`OK: ${EXERCISES.length} legacy exercises; YIN ${detected.hz.toFixed(2)}Hz; scoring ${legacyScore.pitch}/${legacyScore.time}/${legacyScore.flow}; source-aligned curriculum Stage 0-${STAGES.length-1} including Two Generators OK`);
+console.log(`OK: ${EXERCISES.length} legacy exercises; YIN ${detected.hz.toFixed(2)}Hz; scoring ${legacyScore.pitch}/${legacyScore.time}/${legacyScore.flow}; extensible roadmap Stage 0-${STAGES.length-1} + mastery/storage v3 OK`);
