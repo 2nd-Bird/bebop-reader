@@ -20,6 +20,7 @@ When guidance conflicts, use this order:
 
 - [`research/cross-chapter-analysis-rev.md`](research/cross-chapter-analysis-rev.md) — Hamase / Charlie Parker cross-chapter analysis. Use it to convert theory into material-generation grammar; it never overrides Product SPEC, Curriculum Spec, or material policy.
 - [`implementation/implementation-plan.md`](implementation/implementation-plan.md) — implementation order. If it conflicts with a higher-order source, change the plan rather than the higher-order source by implication.
+- [`implementation/structural-invariant-audit.md`](implementation/structural-invariant-audit.md) — required audit guardrails for structural target vs surface boundary, Stage 7 CELL identity, Stage 8 ornament boundaries, Stage 13 density/restart semantics, source provenance, and regression tests. Read this together with the Implementation Plan for those areas.
 - [`source/hamase-prepared-corpus-policy.md`](source/hamase-prepared-corpus-policy.md) — how to consult the prepared book corpus. The corpus and page images remain on Google Drive.
 
 ## Change workflow
@@ -28,7 +29,8 @@ When guidance conflicts, use this order:
 2. Review the diff in a pull request just like code.
 3. If an implementation change exposes a spec problem, update the governing document explicitly in the same PR or a linked docs PR instead of silently encoding a new rule in tests/code.
 4. Implementation PRs should cite the relevant document path / section.
-5. For Hamase-derived material, also cite the relevant prepared-corpus source/page and visually verify notation/figures where applicable.
+5. For Stage 7 / 8 / 13 or any code/test that interprets Phrase Family boundaries, read the structural-invariant audit before implementation.
+6. For Hamase-derived material, also cite the relevant prepared-corpus source/page and visually verify notation/figures where applicable.
 
 ## Why Git is canonical
 
