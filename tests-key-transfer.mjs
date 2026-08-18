@@ -10,14 +10,10 @@ import {createTimeline} from './src/session/timeline.js';
 import {createTransport} from './src/session/transport.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
-const throws=(fn,m)=>{let ok=false;try{fn();}catch{ok=true;}assert(ok,m);};
 const pitchList=notes=>notes.filter(n=>!n.rest).map(n=>n.pitch).join(',');
 
 assert(keyTransferSupported('C',14),'C remains active through the full curriculum');
-for(const key of ['F','Bb']){
-  assert(keyTransferSupported(key,0)&&keyTransferSupported(key,3),`${key} pilot is available for early familiar material`);
-  assert(!keyTransferSupported(key,4),`${key} is not silently promoted beyond Stage 3 before its unlock contract exists`);
-}
+for(const key of ['F','Bb'])assert(keyTransferSupported(key,0)&&keyTransferSupported(key,3)&&keyTransferSupported(key,14),`${key} debug transfer runtime is available through Stage 14 while UI remains debug-only`);
 
 const source=[{pitch:'C4',midi:60,startBeat:0,duration:1,rest:false},{pitch:'E4',midi:64,startBeat:1,duration:1,rest:false},{pitch:'G4',midi:67,startBeat:2,duration:1,rest:false},{pitch:'B3',midi:59,startBeat:3,duration:1,rest:false},{pitch:'F4',midi:65,startBeat:4,duration:1,rest:false}];
 const movedF=transposeNotesFromC(source,'F');
@@ -52,14 +48,14 @@ function verifyStage3Pilot(key,{expectedMi,expectedDo,expectedHarmony,expectedRo
   assert(teacher.variantId==='desc-mi-seed'&&teacher.scoreModel.sourceVariantId==='desc-mi-seed',`${key} transfer preserves Variant identity`);
   assert(teacher.sourceKey==='C'&&teacher.key===key&&teacher.scoreModel.sourceKey==='C'&&teacher.scoreModel.key===key,`${key} explicitly separates source and reading/sounding key`);
   assert(teacher.sourceHarmonyFieldId==='static-c'&&teacher.harmonyFieldId===`static-c@key:${key}`,`${key} event keeps source harmony identity separate`);
-  assert(teacher.harmonyContext===expectedHarmony&&teacher.harmonyTimeline[0].chord===expectedHarmony,`${key} learner-facing harmony is the sounding key context`);
-  assert(pitchList(teacher.scoreModel.notes)===expectedMi,`${key} realizes known G→E relation at the transferred staff positions`);
+  assert(teacher.sourceHarmonyContext==='C'&&teacher.harmonyContext===expectedHarmony&&teacher.harmonyTimeline[0].chord===expectedHarmony,`${key} separates C-source harmony from sounding key context`);
+  assert(pitchList(teacher.scoreModel.notes)===expectedMi,`${key} realizes known G→E relation at transferred staff positions`);
   assert(pitchList(sourceVariant.notes)===sourcePitches&&sourcePitches==='G4,E4',`${key} materialization leaves source registry untouched`);
   const second=plan.events.find(e=>e.familyId==='descend-to-do'&&e.presentationMode==='TEACHER_CALL');
   assert(second&&pitchList(second.scoreModel.notes)===expectedDo,`${key} realizes known E→C relation without a new Phrase Family`);
   const harmonyPulses=sessionHarmonyPulses(plan);assert(harmonyPulses[0].chord===expectedHarmony,`${key} groove receives transferred tonal center`);
   const groove=grooveEvents({fromBeat:0,toBeat:4,key,beatsPerBar:4,harmonyPulses}),rootTone=groove.find(e=>e.kind==='tone'&&e.beat===0);
-  assert(rootTone?.chord===expectedHarmony&&Math.abs(rootTone.freq-expectedRootHz)<1,`${key} groove sounds the transferred root in the phone-safe register`);
+  assert(rootTone?.chord===expectedHarmony&&Math.abs(rootTone.freq-expectedRootHz)<1,`${key} groove sounds transferred root in the phone-safe register`);
   const fakeCtx={currentTime:0},transport=createTransport({audioContext:fakeCtx,bpm:60,beatsPerBar:4});transport.startAt(10);
   const samples=[];for(const note of teacher.scoreModel.notes){if(note.rest)continue;for(let t=note.startBeat;t<note.startBeat+note.duration;t+=.05)samples.push({t:transport.timeAtBeat(teacher.singStartBeat+t)+.02,hz:midiToFreq(note.midi),clarity:.95,rms:.1});}
   const scored=scoreEvent({event:teacher,scoreModel:teacher.scoreModel,samples,transport,latencyMs:0});
@@ -69,17 +65,14 @@ function verifyStage3Pilot(key,{expectedMi,expectedDo,expectedHarmony,expectedRo
 verifyStage3Pilot('F',{expectedMi:'C5,A4',expectedDo:'A4,F4',expectedHarmony:'F',expectedRootHz:349.23});
 verifyStage3Pilot('Bb',{expectedMi:'F4,D4',expectedDo:'D4,Bb3',expectedHarmony:'Bb',expectedRootHz:233.08});
 
-throws(()=>buildDailySessionPlan({currentStage:4,key:'F',eventCount:8,targetSessionBeats:128}),'F pilot must not cross into Stage 4 before a canonical unlock gate is defined');
-throws(()=>buildDailySessionPlan({currentStage:4,key:'Bb',eventCount:8,targetSessionBeats:128}),'B-flat pilot must not cross into Stage 4 before a canonical unlock gate is defined');
-
 const player=fs.readFileSync(new URL('./src/session/player.js',import.meta.url),'utf8');
 const view=fs.readFileSync(new URL('./src/ui/sessionView.js',import.meta.url),'utf8');
 const notation=fs.readFileSync(new URL('./src/notation.js',import.meta.url),'utf8');
 const sw=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(player.includes("params.get('key')")&&player.includes("['C','F','Bb']"),'only debug harness can request F or B-flat pilots');
-assert(player.includes("persistSession=!(debug&&plan.key!=='C')"),'debug non-C sessions cannot pollute production C mastery or key progress');
-assert(view.includes("key==='Bb'?'B♭':key")&&view.includes('phaseCopyFor(keyLabel)'),'session orientation UI renders B-flat and follows the active key');
+assert(player.includes("persistSession=!(debug&&plan.key!=='C')"),'all debug non-C sessions remain non-persistent even when technical coverage reaches later Stages');
+assert(view.includes("key==='Bb'?'B♭':key")&&view.includes('phaseCopyFor(keyLabel)'),'session orientation UI renders B-flat and follows active key');
 assert(notation.includes("stave.addKeySignature(ex.key)"),'ordinary staff renders F/B-flat key signatures');
 assert(sw.includes("'./src/curriculum/keyTransfer.js'"),'PWA core cache includes key-transfer runtime');
 
-console.log('OK: debug-only F and B-flat transfer preserve Phrase Family identity while staff/key signature, harmony, groove, model/scoring targets and UI move together; non-C pilots remain non-persistent and no production unlock threshold is invented');
+console.log('OK: F and B-flat transfer primitives preserve Phrase Family identity while staff/key signature, harmony, groove, model/scoring targets and UI move together; non-C remains debug-only/non-persistent');
