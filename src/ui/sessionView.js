@@ -1,6 +1,7 @@
 import { renderNotation } from '../notation.js';
 import { resetFollower, updateFollower } from '../notation/follow.js';
 import { applyMorphHighlight, clearMorphHighlight } from '../notation/morph.js';
+import { renderPitchGuide } from '../pitchGuide.js';
 
 const labelForKey=key=>key==='Bb'?'B♭':key;
 const phaseCopyFor = keyLabel => ({
@@ -20,7 +21,11 @@ export function sessionSummaryMarkup(summary={}){
   const strengthened=summary.strengthenedFamilies||[],unlocks=summary.unlocks||[],streak=summary.streak==null?'':` · Streak ${Number(summary.streak)||0}日`;
   const strengthenedHTML=strengthened.length?`<section class="performance-details card"><span class="eyebrow">STRENGTHENED</span><h2>読める動きが増えた。</h2><p>${strengthened.map(x=>safe(x.title)).join(' · ')}</p></section>`:'';
   const unlockHTML=unlocks.length?`<section class="performance-details card"><span class="eyebrow">UNLOCK</span><h2>次の音楽が開いた。</h2><p>${unlocks.map(x=>safe(x.title)).join(' · ')}</p></section>`:'';
-  return `<section class="result-hero result-hero-v08 session-summary"><span class="eyebrow">SESSION COMPLETED</span>${starsHTML(summary.stars || 0)}<h1>音楽の中で読み切った。</h1><p>Reading ${summary.readScore}${streak}</p></section>${strengthenedHTML}${unlockHTML}<details class="performance-details card"><summary>歌唱の詳細を見る</summary><div class="detail-copy">読譜の主結果は上の★とReadingです。</div><div class="micro-metrics"><span>Pitch ${summary.pitch}</span><span>Time ${summary.time}</span><span>Flow ${summary.flow}</span></div></details><button class="primary big" id="session-done">今日へ戻る →</button>`;
+  return `<section class="result-hero result-hero-v08 session-summary"><span class="eyebrow">SESSION COMPLETED</span>${starsHTML(summary.stars || 0)}<h1>音楽の中で読み切った。</h1><p>Reading ${summary.readScore}${streak}</p></section>${strengthenedHTML}${unlockHTML}<details class="performance-details card"><summary>歌唱の詳細を見る</summary><div class="detail-copy">読譜の主結果は上の★とReadingです。</div><div class="micro-metrics"><span>Pitch ${summary.pitch}</span><span>Time ${summary.time}</span><span>Flow ${summary.flow}</span></div><div class="detail-copy" id="session-guide-label"></div><div id="session-pitch-guide"></div></details><button class="primary big" id="session-done">今日へ戻る →</button>`;
+}
+
+function weakestGuideResult(summary){
+  return (summary.eventResults||[]).filter(r=>r?.mode==='mic'&&r?.scoreGuideModel&&r?.trace?.length).slice().sort((a,b)=>Number(a.readScore||0)-Number(b.readScore||0))[0]||null;
 }
 
 function applyScoreVisibility(score,event,scoreModel,rendered){
@@ -50,6 +55,10 @@ export function createSessionView({ app, navigate, key='C' }) {
     update({ beat, bar, beatInBar, totalBeats, progress: noteProgress, event, phase: phaseName, audio = null }) {const pct=Math.max(0,Math.min(100,beat/totalBeats*100));progress.style.width=`${pct}%`;position.textContent=beat<0?'COUNT IN':`BAR ${bar} · ${beatInBar}`;if(currentEvent&&currentScoreModel&&event?.eventId===currentEvent.eventId)updateFollower(score,viewport,playhead,currentScoreModel,noteProgress,{autoScroll:true});if(debugEnabled){const session=audio?.audioSession;debug.textContent=`key ${labelForKey(activeKey)} | beat ${beat.toFixed(2)} | bar ${bar}:${beatInBar} | ${event?.eventId||'-'} | ${event?.presentationMode||'-'} | ${phaseName} | ctx ${audio?.contextState||'-'} | session ${session?.type||'-'}${session?.error?'!':''} | groove→${audio?.scheduledBeats??'-'}`;}},
     showFeedback(result) { feedback.textContent = result.stars >= 3 ? '✓' : '△'; feedback.classList.add('show'); setTimeout(() => feedback.classList.remove('show'), 650); },
     showError(error) { start.disabled = false; start.textContent = 'もう一度 START'; phase.innerHTML = `<span class="pulse-dot error"></span><b>開始できませんでした</b><small>${String(error?.message || error)}</small>`; },
-    showSummary(summary) { document.body.classList.remove('attempting'); playhead.classList.remove('active'); root.querySelector('.session-main').innerHTML = sessionSummaryMarkup(summary); root.querySelector('#session-done').onclick = () => navigate('/'); },
+    showSummary(summary) {
+      document.body.classList.remove('attempting');playhead.classList.remove('active');root.querySelector('.session-main').innerHTML=sessionSummaryMarkup(summary);root.querySelector('#session-done').onclick=()=>navigate('/');
+      const weak=weakestGuideResult(summary),guide=root.querySelector('#session-pitch-guide'),label=root.querySelector('#session-guide-label');
+      if(weak&&guide){if(label)label.textContent='いちばん苦戦したphrase';renderPitchGuide(guide,weak.scoreGuideModel,weak);}
+    },
   };
 }
