@@ -51,7 +51,7 @@ for(const key of ['F','Bb']){
     }
   }
   const repeat=buildDailySessionPlan({currentStage:14,key,formId:'c-blues-12',familyMastery:{},bpm:60,eventCount:3,targetSessionBeats:48,flowActionOverride:'REPEAT'}).events.at(-1);
-  assert(pitches(repeat.scoreModel.notes).startsWith(key==='F'?'C5,F5':'F4,Bb4'),`${key} Repeat: known G→F seed moves to the expected staff positions`);
+  assert(pitches(repeat.scoreModel.notes).startsWith(key==='F'?'C5,Bb4':'F4,Eb4'),`${key} Repeat: known G→F seed moves to the expected staff positions`);
 }
 
 // Rhythm Changes is the high-risk composition: source functional MOVE must happen before key transfer.
