@@ -2,7 +2,7 @@ import {musicalFormById,chordAtFormBeat} from './src/curriculum/musicalForms.js'
 import {applyFormMove,semitoneShiftForDominant} from './src/curriculum/formMoves.js';
 import {variantById} from './src/curriculum/variantRegistry.js';
 import {buildDailySessionPlan,recommendedFormIdForStage14} from './src/curriculum/scheduler.js';
-import {emptyFamilyMastery,applyEventResult,cBluesFormReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesOneChorusReady,cBluesStageReady} from './src/curriculum/mastery.js';
+import {emptyFamilyMastery,applyEventResult,cBluesFormReady,cBluesRepeatReady,cBluesMutationReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesOneChorusReady,cBluesStageReady} from './src/curriculum/mastery.js';
 import {sessionHarmonyPulses} from './src/audio/groove.js';
 import {createTimeline} from './src/session/timeline.js';
 
@@ -16,10 +16,9 @@ assert(form.slotPrograms?.length===8,'one form-program slot exists per four-bar 
 assert(form.slotPrograms.filter(x=>x.movePolicy==='RELATIVE_MAJOR_OF_DOMINANT').length===2,'bridge chunks explicitly request functional Relative Major MOVE');
 assert(chordAtFormBeat(form,64)==='E7'&&chordAtFormBeat(form,72)==='A7'&&chordAtFormBeat(form,80)==='D7'&&chordAtFormBeat(form,88)==='G7','bridge dominant chain remains explicit');
 
-assert(semitoneShiftForDominant('E7')===-3&&semitoneShiftForDominant('A7')===2&&semitoneShiftForDominant('D7')===-5&&semitoneShiftForDominant('G7')===0,'functional MOVE is measured from the verified G7 Relative Major context');
-const base=variantById('rm-f-triad');
+assert(semitoneShiftForDominant('E7')===-3&&semitoneShiftForDominant('A7')===2&&semitoneShiftForDominant('D7')===-5&&semitoneShiftForDominant('G7')===0,'functional MOVE stays measured from verified G7 context');
+const base=variantById('rm-f-triad'),expected={E7:'D4,F#4,A4',A7:'G4,B4,D5',D7:'C4,E4,G4',G7:'F4,A4,C5'};
 assert(pitchList(base.notes)==='F4,A4,C5','Stage 10 source Variant remains the familiar F major triad shape');
-const expected={E7:'D4,F#4,A4',A7:'G4,B4,D5',D7:'C4,E4,G4',G7:'F4,A4,C5'};
 for(const [chord,pitches] of Object.entries(expected))assert(pitchList(applyFormMove(base.notes,{movePolicy:'RELATIVE_MAJOR_OF_DOMINANT',harmonyContext:chord}))===pitches,`${chord} receives the correct relative-major shape`);
 assert(pitchList(base.notes)==='F4,A4,C5','Event-time MOVE never mutates the Phrase Variant source');
 
@@ -35,7 +34,7 @@ const bridge=plan.events.filter(e=>e.movePolicy==='RELATIVE_MAJOR_OF_DOMINANT');
 assert(bridge.length===4,'two choruses expose four functional bridge MOVE events');
 assert(bridge.map(e=>e.harmonyContext).join(',')==='E7,D7,A7,G7','chorus-position alternation covers all four bridge dominants without adding new Variants');
 assert(bridge.every(e=>e.variantId==='rm-f-triad'&&e.scoreModel.sourceVariantId==='rm-f-triad'),'all bridge material keeps one Variant identity');
-for(const e of bridge)assert(pitchList(e.scoreModel.notes)===expected[e.harmonyContext],`${e.harmonyContext} score/scoring model is functionally MOVEd`);
+for(const e of bridge)assert(pitchList(e.scoreModel.notes)===expected[e.harmonyContext],`${e.harmonyContext} notation/scoring is functionally moved`);
 assert(new Set(bridge.map(e=>e.formPosition)).size===4,'the same shape is cold-read at four distinct bridge form positions');
 assert(bridge.every(e=>e.formTransfer&&e.harmonyTransfer),'bridge events record both form and harmonic transfer');
 assert(bridge.every(e=>e.scoreModel.harmonyTimeline[0].chord===e.harmonyContext),'moved notation remains anchored to the actual sounding dominant');
@@ -49,30 +48,31 @@ assert(recommendedFormIdForStage14({})==='c-blues-12','Stage 14 starts with C Bl
 let weak=emptyFamilyMastery();
 weak=applyEventResult(weak,{familyId:'g-to-f-surfaces',variantId:'gf-cell-seed',presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:2,harmonyContext:'C7',harmonyFieldId:'form:c-blues-12:C7'},{readScore:60,stars:2},1000);
 assert(weak.coldFormContextKeys.length===0,'unsuccessful cold form read does not count as transfer evidence');
+
 const evidence={};
 for(const [familyId,variantId] of [['g-to-f-surfaces','gf-cell-seed'],['density-g-to-f','density-gf-seed']]){
- let record=emptyFamilyMastery();
- for(const [i,chord] of ['C7','F7','G7'].entries())record=applyEventResult(record,{familyId,variantId,presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:[2,5,11][i],harmonyContext:chord,harmonyFieldId:`form:c-blues-12:${chord}`},{readScore:90,stars:4},2000+i);
- evidence[familyId]=record;
+  let record=emptyFamilyMastery();
+  for(const [i,chord] of ['C7','F7','G7'].entries())record=applyEventResult(record,{familyId,variantId,presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:[2,5,11][i],harmonyContext:chord,harmonyFieldId:`form:c-blues-12:${chord}`},{readScore:90,stars:4},2000+i);
+  evidence[familyId]=record;
 }
 assert(cBluesFormReady(evidence),'successful I / IV / V cold transfer for both integrated families completes the cold form gate');
-assert(!cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence)&&!cBluesStageReady(evidence),'cold form transfer alone is not the late-Stage-14 FLOW gate');
+assert(!cBluesRepeatReady(evidence)&&!cBluesMutationReady(evidence)&&!cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence)&&!cBluesStageReady(evidence),'cold form transfer alone is not the late-Stage-14 FLOW gate');
 assert(recommendedFormIdForStage14(evidence)==='c-blues-12','C Blues continues until the late FLOW sequence is complete');
 
-const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:7,harmonyContext:'C7',harmonyFieldId:'form:c-blues-12:flow'};
-evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'CONNECT'},{readScore:88,stars:4},3000);
-assert(cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence),'successful four-bar Connect is required before Trade');
-assert(recommendedFormIdForStage14(evidence)==='c-blues-12','Connect alone keeps the learner in C Blues for Trade');
-evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'TRADE'},{readScore:86,stars:4},4000);
-assert(cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence),'successful Trade is required before partial-score Recall');
-assert(recommendedFormIdForStage14(evidence)==='c-blues-12','Trade still keeps the learner in C Blues for Recall');
-evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'RECALL'},{readScore:84,stars:4},5000);
-assert(cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence)&&!cBluesStageReady(evidence),'successful Recall unlocks one chorus but no longer completes the C Blues gate by itself');
-assert(recommendedFormIdForStage14(evidence)==='c-blues-12','after Recall the learner remains in C Blues for a complete chorus');
-evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'ONE_CHORUS'},{readScore:82,stars:4},6000);
-assert(cBluesOneChorusReady(evidence)&&cBluesStageReady(evidence),'successful one-chorus read after Recall completes the C Blues Stage 14 gate');
-assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes only after cold transfer + Connect + Trade + Recall + one chorus');
+const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:10,harmonyContext:'F7',harmonyFieldId:'form:c-blues-12:flow'};
+const sequence=['REPEAT','MUTATION','CONNECT','TRADE','RECALL','ONE_CHORUS'];
+for(const [i,action] of sequence.entries()){
+  evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:action},{readScore:88-i,stars:4},3000+i);
+  if(action==='REPEAT')assert(cBluesRepeatReady(evidence)&&!cBluesMutationReady(evidence),'Repeat unlocks Mutation');
+  if(action==='MUTATION')assert(cBluesMutationReady(evidence)&&!cBluesConnectReady(evidence),'Mutation unlocks Connect');
+  if(action==='CONNECT')assert(cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence),'Connect unlocks Trade');
+  if(action==='TRADE')assert(cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence),'Trade unlocks Recall');
+  if(action==='RECALL')assert(cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence),'Recall unlocks one chorus');
+  if(action!=='ONE_CHORUS')assert(recommendedFormIdForStage14(evidence)==='c-blues-12',`${action} does not skip the remaining C Blues FLOW steps`);
+}
+assert(cBluesOneChorusReady(evidence)&&cBluesStageReady(evidence),'one chorus completes the C Blues gate only after the whole FLOW sequence');
+assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','Rhythm Changes unlocks after cold transfer + Repeat + Mutation + Connect + Trade + Recall + one chorus');
 const autoPlan=buildDailySessionPlan({currentStage:14,familyMastery:evidence,bpm:60,eventCount:20,targetSessionBeats:320});
-assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes only after the complete C Blues one-chorus gate');
+assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler advances to Rhythm Changes after the complete gate');
 
-console.log('OK: Rhythm Changes unlocks only after C Blues cold transfer + Connect + Trade + Recall + one complete chorus, then reuses known material through the full form');
+console.log('OK: Rhythm Changes unlocks only after the full C Blues FLOW sequence while preserving bridge MOVE, groove, source-identity and theory-free regressions');

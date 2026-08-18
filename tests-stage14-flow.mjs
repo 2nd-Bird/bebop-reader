@@ -1,7 +1,7 @@
 import {musicalFormById} from './src/curriculum/musicalForms.js';
 import {connectVariants,buildClosingFlowEvent} from './src/curriculum/flow.js';
 import {buildDailySessionPlan} from './src/curriculum/scheduler.js';
-import {emptyFamilyMastery,applyEventResult} from './src/curriculum/mastery.js';
+import {emptyFamilyMastery,applyEventResult,cBluesMutationReady} from './src/curriculum/mastery.js';
 import {createTimeline} from './src/session/timeline.js';
 
 const assert=(c,m)=>{if(!c)throw new Error(m)};
@@ -18,24 +18,27 @@ assert(direct.variantId===null&&direct.flowSourceVariantIds.length===4,'composit
 assert(direct.scoreModel.totalBeats===16&&direct.singEndBeat-direct.singStartBeat===16,'FLOW is one continuous four-bar SING window');
 assert(direct.startBeat===256&&direct.singStartBeat===268&&direct.singEndBeat===284&&direct.endBeat===288,'FLOW leaves pre-read and a final response bar without changing session duration');
 assert(direct.formPosition===7,'FLOW begins reading at Blues bar 8 and continues four bars');
-assert(direct.harmonyTimeline.map(x=>`${x.beat}:${x.chord}`).join(',')==='0:C7,4:G7,8:F7,12:C7','four-bar FLOW follows the actual C Blues harmonic positions');
-assert(direct.modelPolicy==='NONE'&&direct.morphPolicy==='NONE'&&direct.scoreVisibility==='FULL','Connect FLOW is scaffold-free but still ordinary visible notation');
+assert(direct.harmonyTimeline.map(x=>`${x.beat}:${x.chord}`).join(',')==='0:C7,4:G7,8:F7,12:C7','four-bar FLOW follows actual C Blues harmony');
+assert(direct.modelPolicy==='NONE'&&direct.morphPolicy==='NONE'&&direct.scoreVisibility==='FULL','Connect remains scaffold-free ordinary notation');
 
-const plan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',eventCount:24,targetSessionBeats:320,bpm:60});
+const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:10,harmonyContext:'F7',harmonyFieldId:'form:c-blues-12:flow'};
+let prereq=emptyFamilyMastery();
+for(const [i,action] of ['REPEAT','MUTATION'].entries())prereq=applyEventResult(prereq,{...flowBase,flowAction:action},{readScore:90-i,stars:4},1000+i);
+const evidence={'g-to-f-surfaces':prereq};
+assert(cBluesMutationReady(evidence),'Connect scheduler fixture explicitly satisfies Repeat and Mutation first');
+const plan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:evidence,eventCount:24,targetSessionBeats:320,bpm:60});
 const flows=plan.events.filter(e=>e.presentationMode==='FLOW');
 assert(flows.length===1,'one Closing FLOW appears in the C Blues session');
 const flow=flows[0];
-assert(flow.eventId===plan.events.at(-1).eventId,'Closing FLOW is the final Learning Event');
-assert(plan.events.at(-2).endBeat===flow.startBeat,'FLOW replaces two ordinary fields without overlap or timing gap');
-assert(plan.totalBeats===288&&flow.endBeat===288,'FLOW preserves full-chorus session ending');
-assert(plan.events.length===17,'two final 16-beat fields are replaced by one 32-beat FLOW field');
+assert(flow===plan.events.at(-1)&&flow.flowAction==='CONNECT','Closing FLOW is the final Learning Event after Mutation');
+assert(plan.events.at(-2).endBeat===flow.startBeat&&plan.totalBeats===288&&flow.endBeat===288,'Connect replaces two fields without timing gap or session extension');
+assert(plan.events.length===17,'two final 16-beat fields are replaced by one 32-beat Connect field');
 createTimeline(plan).validate();
 
-let record=emptyFamilyMastery();
-record=applyEventResult(record,flow,{readScore:88,stars:4},1000);
-assert(record.flowAttempts===1&&record.flowRead>.8,'FLOW performance is tracked separately');
-assert(record.flowActions.includes('CONNECT')&&record.flowFormIds.includes('c-blues-12'),'successful FLOW records Connect/form evidence');
-assert(record.coldReadAttempts===0&&record.coldVariantIds.length===0,'FLOW does not masquerade as cold-read Variant mastery');
-assert(record.seenVariantIds.length===0,'composite FLOW with no Variant ID does not create a fake seen Variant');
+let record=applyEventResult(prereq,flow,{readScore:88,stars:4},2000);
+assert(record.flowAttempts===3&&record.flowRead>.8,'FLOW performance remains tracked separately across Repeat, Mutation and Connect');
+assert(record.flowActions.join(',')==='REPEAT,MUTATION,CONNECT','FLOW mastery preserves the canonical early sequence');
+assert(record.flowFormIds.includes('c-blues-12'),'successful Connect retains C Blues FLOW/form evidence');
+assert(record.coldReadAttempts===0&&record.coldVariantIds.length===0&&record.seenVariantIds.length===0,'Connect does not fabricate cold/Variant mastery');
 
-console.log('OK: C Blues closes with one visible four-bar CONNECT FLOW built only from already-known Phrase Variants');
+console.log('OK: C Blues reaches four-bar CONNECT only after Repeat and Mutation, using already-known Phrase Variants while preserving Connect regressions');
