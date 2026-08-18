@@ -3,8 +3,8 @@ import{variantById}from'./variantRegistry.js';
 import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';
 import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
-import{buildClosingFlowEvent}from'./flow.js';
-import{cBluesConnectReady,cBluesStageReady}from'./mastery.js';
+import{buildClosingFlowEvent,buildClosingTradeEvent}from'./flow.js';
+import{cBluesConnectReady,cBluesTradeReady,cBluesStageReady}from'./mastery.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
 
@@ -120,13 +120,21 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   events.push(event);cursor=endBeat;
  }
  if(!events.length)throw new Error('session has no events');
- if(musicalForm?.closingFlowProgram&&events.length>=2){
-   const secondLast=events.at(-2),last=events.at(-1),span=last.endBeat-secondLast.startBeat;
-   if(Math.abs(span-32)<.001){
-     const requestedFlow=['CONNECT','RECALL'].includes(flowActionOverride)?flowActionOverride:null;
-     const flowAction=requestedFlow||(cBluesConnectReady(familyMastery)?'RECALL':'CONNECT');
-     const flow=buildClosingFlowEvent({musicalForm,startBeat:secondLast.startBeat,endBeat:last.endBeat,key,bpm,eventId:`event-${String(events.length-1).padStart(2,'0')}-flow`,flowAction});
-     if(flow)events.splice(events.length-2,2,flow);
+ if(musicalForm?.closingFlowProgram){
+   const requestedFlow=['CONNECT','TRADE','RECALL'].includes(flowActionOverride)?flowActionOverride:null;
+   const flowAction=requestedFlow||(!cBluesConnectReady(familyMastery)?'CONNECT':!cBluesTradeReady(familyMastery)?'TRADE':'RECALL');
+   if(flowAction==='TRADE'&&events.length>=1){
+     const last=events.at(-1),span=last.endBeat-last.startBeat;
+     if(Math.abs(span-16)<.001){
+       const trade=buildClosingTradeEvent({musicalForm,startBeat:last.startBeat,endBeat:last.endBeat,key,bpm,eventId:`${last.eventId}-trade`});
+       if(trade)events.splice(events.length-1,1,trade);
+     }
+   }else if(events.length>=2){
+     const secondLast=events.at(-2),last=events.at(-1),span=last.endBeat-secondLast.startBeat;
+     if(Math.abs(span-32)<.001){
+       const flow=buildClosingFlowEvent({musicalForm,startBeat:secondLast.startBeat,endBeat:last.endBeat,key,bpm,eventId:`event-${String(events.length-1).padStart(2,'0')}-flow`,flowAction});
+       if(flow)events.splice(events.length-2,2,flow);
+     }
    }
  }
  const totalBeats=cursor,totalBars=totalBeats/4,formHarmonyTimeline=musicalForm?expandFormHarmony(musicalForm,totalBeats):null;
