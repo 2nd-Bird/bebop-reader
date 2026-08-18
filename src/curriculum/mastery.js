@@ -24,7 +24,8 @@ export function applyEventResult(record,event,result,now=Date.now()){
  if(flow){
   flowRead=prev.flowAttempts?prev.flowRead*.62+q*.38:q;flowAttempts++;lastFlowAt=now;
   if(q>=.7&&event?.form)flowFormIds=uniq([...flowFormIds,event.form]);
-  if(q>=.7&&event?.flowAction)flowActions=uniq([...flowActions,event.flowAction]);
+  const accepted=q>=.7&&event?.flowAction&&(event.flowAction!=='FREE_FLOW'||result?.freeFlowPassed===true);
+  if(accepted)flowActions=uniq([...flowActions,event.flowAction]);
  }
  const basis=cold?coldRead:flow?flowRead:reading,days=basis<.6?1:basis<.78?2:basis<.9?4:7;
  return{...prev,familyId:event?.familyId||prev.familyId,reading:clamp(reading),coldRead:clamp(coldRead),flowRead:clamp(flowRead),attempts,coldReadAttempts,flowAttempts,successes:prev.successes+(result?.stars>=3?1:0),lastSeenAt:now,lastColdReadAt,lastFlowAt,dueAt:now+days*86400000,seenVariantIds,coldVariantIds,coldHarmonyFieldIds,coldVariantHarmonyKeys,coldFormIds,coldFormContextKeys,coldFormPositionKeys,flowFormIds,flowActions};
@@ -53,7 +54,8 @@ export function cBluesConnectReady(familyMastery={}){const r=familyMastery?.['g-
 export function cBluesTradeReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesConnectReady(familyMastery)&&hasFlowAction(r,'c-blues-12','TRADE');}
 export function cBluesRecallReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesTradeReady(familyMastery)&&hasFlowAction(r,'c-blues-12','RECALL');}
 export function cBluesOneChorusReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesRecallReady(familyMastery)&&hasFlowAction(r,'c-blues-12','ONE_CHORUS');}
-export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesOneChorusReady(familyMastery);}
+export function cBluesFreeFlowReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesOneChorusReady(familyMastery)&&hasFlowAction(r,'c-blues-12','FREE_FLOW');}
+export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesFreeFlowReady(familyMastery);}
 export function deriveStageProgress(familyMastery,currentStage=0,maxStage=3){
  let stage=clamp(Number(currentStage)||0,0,maxStage),advanced=false;
  const required=familiesForStage(stage);
