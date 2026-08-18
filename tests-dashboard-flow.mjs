@@ -17,6 +17,8 @@ const sw=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(dashboard.includes("nextCBluesFlowAction")&&dashboard.includes("TRADE:'聴いて、譜面で返す'")&&dashboard.includes("ONE_CHORUS:'1コーラスを読み切る'"),'Home/Library expose the full implemented Stage 14 FLOW sequence');
 assert(dashboard.includes('TODAY · 7 MIN')&&dashboard.includes('約5〜7分 · 音楽は止まりません'),'Home uses Product SPEC time-first framing');
 assert(!dashboard.includes('connectReady'),'dashboard no longer collapses Stage 14 progress to Connect/Recall only');
+assert(dashboard.includes('LAST SESSION')&&dashboard.includes("Reading ${last.readScore??'—'}"),'Home keeps prior Session stars/Reading visible');
+assert(!dashboard.includes("Pitch ${last.pitch??'—'}")&&!dashboard.includes("Flow ${last.flow??'—'}")&&!dashboard.includes("Time ${last.time??'—'}"),'Home does not re-promote vocal diagnostic metrics after Summary demotes them to details');
 assert(sw.includes("'./src/curriculum/flowProgress.js'"),'PWA caches dashboard FLOW progress helper');
 
-console.log('OK: dashboard follows Repeat → Mutation → Connect → Trade → Recall → One Chorus and keeps time-first Daily Session framing');
+console.log('OK: dashboard follows full Stage 14 FLOW, keeps time-first framing, and keeps Home prior-result hierarchy focused on stars/Reading');
