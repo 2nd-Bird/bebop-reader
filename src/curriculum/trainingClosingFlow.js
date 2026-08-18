@@ -19,8 +19,8 @@ export function buildTrainingClosingFlowEvent({sourceEvent,startBeat=sourceEvent
   const flowAction=repeats===2?'REPEAT':'CONNECT',title=repeats===2?'Closing FLOW · Repeat the Move':'Closing FLOW · Keep the Line',key=sourceEvent.key||model.key||'C';
   return{
     eventId:eventId||`${sourceEvent.eventId||'event'}-closing-flow`,familyId:sourceEvent.familyId,variantId:null,title,sourceKey:sourceEvent.sourceKey||'C',key,keyTransfer:false,warmup:false,
-    sourceHarmonyFieldId:`flow:${sourceEvent.sourceHarmonyFieldId||sourceEvent.harmonyFieldId||'session'}`,sourceHarmonyContext:sourceEvent.sourceHarmonyContext||model.sourceHarmonyContext||sourceEvent.harmonyContext,
-    harmonyFieldId:`flow:${sourceEvent.harmonyFieldId||'session'}`,harmonyContext:harmonyTimeline[0]?.chord||sourceEvent.harmonyContext||key,harmonyTimeline,tonalFieldId:sourceEvent.tonalFieldId||null,
+    sourceHarmonyFieldId:sourceEvent.sourceHarmonyFieldId||sourceEvent.harmonyFieldId||null,sourceHarmonyContext:sourceEvent.sourceHarmonyContext||model.sourceHarmonyContext||sourceEvent.harmonyContext,
+    harmonyFieldId:sourceEvent.harmonyFieldId||null,harmonyContext:harmonyTimeline[0]?.chord||sourceEvent.harmonyContext||key,harmonyTimeline,tonalFieldId:sourceEvent.tonalFieldId||null,
     harmonyTransfer:false,tonalFieldTransfer:false,formTransfer:false,movePolicy:sourceEvent.movePolicy||'NONE',form:sourceEvent.form,fieldBeats,formPosition:sourceEvent.formPosition??0,
     startBeat:Number(startBeat),prepareBeat,singStartBeat,singEndBeat,endBeat:Number(endBeat),presentationMode:'FLOW',modelPolicy:'NONE',morphPolicy:'NONE',scoringPolicy:'FLOW',
     flowAction,scoreVisibility:'FULL',visibleBeats:flowBeats,flowSourceVariantIds:sourceVariantIds,
