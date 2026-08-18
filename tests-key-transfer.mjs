@@ -71,7 +71,7 @@ const notation=fs.readFileSync(new URL('./src/notation.js',import.meta.url),'utf
 const sw=fs.readFileSync(new URL('./sw.js',import.meta.url),'utf8');
 assert(player.includes("params.get('key')")&&player.includes("['C','F','Bb']"),'only debug harness can request F or B-flat pilots');
 assert(player.includes("persistSession=!(debug&&plan.key!=='C')"),'all debug non-C sessions remain non-persistent even when technical coverage reaches later Stages');
-assert(view.includes("key==='Bb'?'B♭':key")&&view.includes('phaseCopyFor(keyLabel)'),'session orientation UI renders B-flat and follows active key');
+assert(view.includes("labelForKey=key=>key==='Bb'?'B♭':key")&&view.includes('phaseCopyFor(labelForKey(activeKey))'),'session orientation UI renders B-flat and follows the active Learning Event key');
 assert(notation.includes("stave.addKeySignature(ex.key)"),'ordinary staff renders F/B-flat key signatures');
 assert(sw.includes("'./src/curriculum/keyTransfer.js'"),'PWA core cache includes key-transfer runtime');
 
