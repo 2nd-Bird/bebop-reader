@@ -13,6 +13,7 @@ When guidance conflicts, use this order:
 1. [`spec/product-spec-v0.9.md`](spec/product-spec-v0.9.md) — product UX, game loop, system responsibilities, technical requirements.
 2. [`spec/curriculum-spec-v1.md`](spec/curriculum-spec-v1.md) — what is learned, in what sequence, and as what kind of Learning Event.
    - [`spec/key-unlock-contract-v1.md`](spec/key-unlock-contract-v1.md) is the normative appendix to Curriculum Spec v1 §14. It defines the detailed C → F → B♭ unlock / transfer-mastery contract at the same Source-of-Truth layer as the Curriculum Spec, while remaining subordinate to the main Curriculum Spec text if they conflict.
+   - [`spec/free-flow-contract-v1.md`](spec/free-flow-contract-v1.md) is the normative appendix for the Stage 14 `Free Flow` step. It defines constrained known-chunk recombination, cue notation, multiple-valid-target scoring, and the first C Blues completion gate while remaining subordinate to Product SPEC and the main Curriculum Spec.
 3. [`pedagogy/material-policy-rev3.md`](pedagogy/material-policy-rev3.md) — learning philosophy and material-design principles.
 4. GitHub `main` / current implementation — implementation evidence, subordinate to the three documents above but preferred over legacy specs.
 5. Legacy specs — history only.
