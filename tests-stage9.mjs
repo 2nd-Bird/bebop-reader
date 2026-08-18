@@ -17,11 +17,17 @@ assert(stage9?.id==='chord-change-long-line','Stage 9 exists');
 assert(stage9.field==='phrase-8','Stage 9 unlocks Phrase 8 musical field');
 assert(stage9.unlock.phraseBeats.join(',')==='8,16','Stage 9 grows two- to four-bar sung lines');
 assert(stage9.unlock.fieldProgression.join(',')==='training-4,phrase-8','musical field grows rather than only score length');
-assert(family?.invariant==='continuous descending stepwise line across changing harmony','Stage 9 invariant is explicit');
-assert(family.source.hamaseRef==='ex.071'&&family.source.sourcePage===50,'Stage 9 primary source is prepared ex.071 page 50');
-assert(family.source.hamaseRefs.join(',')==='ex.071,ex.085'&&family.source.sourcePages.join(',')==='50,58','Stage 9 keeps long-line and generator traceability');
-assert(family.source.sourceKind==='historical-linear-line-model','Lester Young source is not mislabeled as Parker transcription');
-assert(family.source.adaptation,'Stage 9 declares C-major pedagogical adaptation');
+assert(!stage9.gate.includes('LINEAR LINE'),'learner-facing Stage 9 gate avoids internal analysis jargon');
+assert(family?.invariant==='one descending motion stays continuous across changing harmony','Stage 9 invariant is explicit');
+assert(family.title==='One Line, Keep Going','Stage 9 Family title is experiential');
+for(const term of ['linear','chord','cell','analysis'])assert(!family.title.toLowerCase().includes(term),`Stage 9 Family title leaks internal term ${term}`);
+
+assert(family.source.hamaseRef==='ex.092'&&family.source.sourcePage===64,'Stage 9 primary source is Parker ex.092 prepared page 64');
+assert(family.source.sourceWork==='All the Things You Are','Stage 9 primary source work');
+assert(family.source.sourceKind==='parker-long-line-model','Stage 9 is anchored in a Parker long-line example');
+assert(family.source.hamaseRefs.join(',')==='ex.092,ex.071,ex.085','Stage 9 keeps Parker example, historical precursor and generator traceability');
+assert(family.source.sourcePages.join(',')==='64,50,58','Stage 9 prepared source pages are explicit');
+assert(family.source.adaptation,'Stage 9 declares C-major pedagogical adaptation rather than source transcription');
 
 const seed=variantById('long-line-2bar'),grow=variantById('long-line-4bar');
 assert(pitches('long-line-2bar').join(',')==='C5,B4,A4,G4','two-bar seed reuses first half of known descent');
@@ -67,5 +73,5 @@ assert(retry.harmonyFieldId===missed.harmonyFieldId&&retry.harmonyTimeline.map(x
 
 const fakeCtx={currentTime:0},transport=createTransport({audioContext:fakeCtx,bpm:60,beatsPerBar:4});transport.startAt(0);fakeCtx.currentTime=50;transport.pause();const nextBoundary=plan.events.find(e=>e.startBeat>=transport.currentBeat()-.02)?.startBeat;assert(nextBoundary===64,'mixed 16/32-beat timeline exposes actual next Event boundary');assert(transport.resumeAtBeat(nextBoundary,{leadSec:0})===64,'Transport resumes at explicit Learning Event boundary');assert(Math.abs(transport.currentBeat()-64)<1e-9,'resume does not land halfway through Phrase 8 event');
 
-assert(plan.events.every(e=>!('theoryPrompt' in e)&&!('chordAnalysisQuestion' in e)),'Stage 9 keeps chord-change analysis internal');
-console.log('OK: Stage 9 keeps one long line across bar-aligned harmony and expands Learning Events to Phrase 8 without extending session duration');
+assert(plan.events.every(e=>!('theoryPrompt' in e)&&!('chordAnalysisQuestion' in e)&&!('linearLineQuestion' in e)),'Stage 9 keeps chord/line analysis internal');
+console.log('OK: Stage 9 keeps one long motion across bar-aligned harmony, expands to Phrase 8, and stays grounded in verified Parker source evidence');
