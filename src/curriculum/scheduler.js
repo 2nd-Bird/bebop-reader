@@ -5,7 +5,7 @@ import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
 import{buildClosingFlowEvent,buildClosingTradeEvent,buildOneChorusFlowEvent}from'./flow.js';
 import{buildPairFlowEvent}from'./flowPair.js';
-import{cBluesRepeatReady,cBluesMutationReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesStageReady}from'./mastery.js';
+import{nextCBluesFlowAction,cBluesStageReady}from'./mastery.js';
 import{keyTransferSupported,transposeHarmonyTimelineFromC}from'./keyTransfer.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
@@ -126,7 +126,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  if(!events.length)throw new Error('session has no events');
  if(musicalForm?.closingFlowProgram){
    const requestedFlow=['REPEAT','MUTATION','CONNECT','TRADE','RECALL','ONE_CHORUS'].includes(flowActionOverride)?flowActionOverride:null;
-   const flowAction=requestedFlow||(!cBluesRepeatReady(familyMastery)?'REPEAT':!cBluesMutationReady(familyMastery)?'MUTATION':!cBluesConnectReady(familyMastery)?'CONNECT':!cBluesTradeReady(familyMastery)?'TRADE':!cBluesRecallReady(familyMastery)?'RECALL':'ONE_CHORUS');
+   const flowAction=requestedFlow||(nextCBluesFlowAction(familyMastery)||'ONE_CHORUS');
    if(['REPEAT','MUTATION'].includes(flowAction)&&events.length>=1){
      const last=events.at(-1),span=last.endBeat-last.startBeat;
      if(Math.abs(span-16)<.001){
