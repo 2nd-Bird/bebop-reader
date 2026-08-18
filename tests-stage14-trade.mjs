@@ -9,14 +9,17 @@ const assert=(c,m)=>{if(!c)throw new Error(m)};
 const blues=musicalFormById('c-blues-12'),program=blues.closingFlowProgram;
 assert(program.tradeCallVariantId==='gf-cell-fan'&&program.tradeResponseVariantId==='gf-cell-return','TRADE reuses two already-known Stage 7 variants');
 assert(program.tradeCallVariantId!==program.tradeResponseVariantId,'TRADE is a musical call and response, not a blind echo-copy task');
+
 const trade=buildClosingTradeEvent({musicalForm:blues,startBeat:272,endBeat:288,key:'C',bpm:60,eventId:'trade-test'});
 assert(trade.presentationMode==='FLOW'&&trade.flowAction==='TRADE','TRADE is a FLOW presentation rather than a new Variant');
 assert(trade.variantId===null&&trade.familyId==='g-to-f-surfaces','TRADE preserves Phrase Family identity without fabricating a composite Variant');
 assert(trade.modelPolicy==='TRADE_CALL'&&trade.morphPolicy==='NONE','TRADE has a deliberate model call but no theory/Morph scaffold');
 assert(trade.modelStartBeat===272&&trade.modelEndBeat===276&&trade.prepareBeat===276&&trade.singStartBeat===280&&trade.singEndBeat===284&&trade.endBeat===288,'TRADE is 4 call + 4 audiate + 4 response + 4 space');
+assert(trade.singStartBeat-trade.prepareBeat===4,'TRADE preserves a silent audiation window after the model instead of asking for immediate imitation');
 assert(trade.modelScoreModel.sourceVariantId==='gf-cell-fan'&&trade.scoreModel.sourceVariantId==='gf-cell-return','call and response retain known Variant identities');
 assert(trade.modelScoreModel.harmonyTimeline[0].chord==='G7'&&trade.scoreModel.harmonyTimeline[0].chord==='C7','call and response follow their actual Blues positions');
 assert(trade.scoreVisibility==='FULL'&&trade.visibleBeats===4,'TRADE response remains ordinary fully visible staff notation');
+assert(!('analysisPrompt' in trade)&&!('cellQuestion' in trade)&&!('nameTheChord' in trade),'TRADE never turns internal grammar into a learner theory task');
 createTimeline({events:[trade],totalBeats:288}).validate();
 
 const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:10,harmonyContext:'F7',harmonyFieldId:'form:c-blues-12:flow'};
@@ -29,17 +32,21 @@ const closing=plan.events.at(-1);
 assert(closing.flowAction==='TRADE'&&closing.modelPolicy==='TRADE_CALL','normal Scheduler inserts TRADE after successful canonical prerequisites');
 assert(closing.startBeat===272&&closing.endBeat===288&&plan.events.at(-2).endBeat===closing.startBeat&&plan.totalBeats===288,'TRADE replaces final field without a gap or extension');
 createTimeline(plan).validate();
+
 record=applyEventResult(record,closing,{readScore:86,stars:4},2000);
 const tradeEvidence={'g-to-f-surfaces':record};
 assert(cBluesTradeReady(tradeEvidence)&&!cBluesRecallReady(tradeEvidence),'successful TRADE unlocks Recall but does not count as Recall');
 assert(record.flowActions.join(',')==='REPEAT,MUTATION,CONNECT,TRADE','FLOW history preserves the canonical order through Trade');
 assert(record.coldReadAttempts===0&&record.coldVariantIds.length===0&&record.seenVariantIds.length===0,'TRADE does not create fake cold-read or Variant mastery');
 assert(buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:tradeEvidence,bpm:60,eventCount:24,targetSessionBeats:320}).events.at(-1).flowAction==='RECALL','after Trade the next closing FLOW advances to Recall');
+
 const debugPlan=buildDailySessionPlan({currentStage:14,formId:'c-blues-12',familyMastery:{},bpm:60,eventCount:3,targetSessionBeats:48,flowActionOverride:'TRADE'});
 assert(debugPlan.totalBeats===48&&debugPlan.events.at(-1).flowAction==='TRADE'&&debugPlan.events.at(-1).singStartBeat===40,'debug harness can expose TRADE directly');
 createTimeline(debugPlan).validate();
+
 const engine=fs.readFileSync(new URL('./src/session/engine.js',import.meta.url),'utf8'),view=fs.readFileSync(new URL('./src/ui/sessionView.js',import.meta.url),'utf8'),player=fs.readFileSync(new URL('./src/session/player.js',import.meta.url),'utf8');
 assert(engine.includes('event.modelScoreModel || event.scoreModel'),'engine can schedule distinct TRADE call while scoring visible response');
 assert(view.includes("TRADE:'聴いて、返す'"),'learner-facing TRADE copy stays experiential and minimal');
 assert(player.includes("['REPEAT','MUTATION','CONNECT','TRADE','RECALL','ONE_CHORUS']"),'debug harness exposes the full implemented FLOW order');
-console.log('OK: Stage 14 TRADE follows Repeat→Mutation→Connect and remains call → audiate/read → staff response inside C Blues');
+
+console.log('OK: Stage 14 TRADE follows Repeat→Mutation→Connect and remains call → silent audiate/read → staff response inside C Blues');
