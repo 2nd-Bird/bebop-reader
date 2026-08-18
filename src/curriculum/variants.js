@@ -1,6 +1,6 @@
 const N=(pitch,midi,startBeat,duration)=>({pitch,midi,startBeat,duration,rest:false});
 const R=(startBeat,duration)=>({pitch:null,midi:null,startBeat,duration,rest:true});
-const V=(variantId,familyId,phase,notes,{parentVariant=null,morphType='NONE',morphTargets=[],allowedPresentation=['COLD_READ'],coldReadEligible=true,allowedHarmony=['C'],source=null}={})=>({variantId,familyId,phase,parentVariant,notes,rhythm:'4/4',meter:[4,4],morphType,morphTargets,allowedKeys:['C'],allowedHarmony,allowedPresentation,coldReadEligible,source});
+const V=(variantId,familyId,phase,notes,{parentVariant=null,morphType='NONE',morphTargets=[],allowedPresentation=['COLD_READ'],coldReadEligible=true,allowedHarmony=['C'],source=null,structuralTargetIndices=null,entryRole=null,exitRole=null,continuationRole=null}={})=>({variantId,familyId,phase,parentVariant,notes,rhythm:'4/4',meter:[4,4],morphType,morphTargets,allowedKeys:['C'],allowedHarmony,allowedPresentation,coldReadEligible,source,structuralTargetIndices,entryRole,exitRole,continuationRole});
 const TEACH=['TEACHER_CALL','BUILD','COLD_READ','DELAYED_READ'];
 const LEARN=['BUILD','COLD_READ','DELAYED_READ'];
 const STAGE4_SOURCE={type:'curriculum',hamaseRef:null,analysisRef:'C / C6 / Am7 / Dm7を共有shape familyとして経験',curriculumRef:'教材の方針 rev.3 Stage 4'};
@@ -33,9 +33,9 @@ export const VARIANTS=[
   V('harmony-descent-grow','harmony-born-descent','GROW',[N('C5',72,0,1),N('B4',71,1,1),N('A4',69,2,1),N('G4',67,3,1),N('F4',65,4,1),N('E4',64,5,1),N('D4',62,6,1),N('C4',60,7,1)],{parentVariant:'harmony-descent-seed',morphType:'EXTEND',morphTargets:[4,5,6,7],allowedPresentation:LEARN,allowedHarmony:['Cmaj7','Am7','FMaj7','Dm7'],source:STAGE6_HARMONY_SOURCE}),
   V('line-descent-seed','line-born-descent','SEED',[N('G4',67,0,1),N('F4',65,1,1),N('E4',64,2,1),N('D4',62,3,1)],{allowedPresentation:TEACH,allowedHarmony:['G7','Em7'],source:STAGE6_LINE_SOURCE}),
   V('line-descent-grow','line-born-descent','GROW',[N('G4',67,0,1),N('F4',65,1,1),N('E4',64,2,1),N('D4',62,3,1),N('C4',60,4,2),N('B3',59,6,2)],{parentVariant:'line-descent-seed',morphType:'EXTEND',morphTargets:[4,5],allowedPresentation:LEARN,allowedHarmony:['G7','Em7','Cmaj7'],source:STAGE6_LINE_SOURCE}),
-  V('gf-cell-seed','g-to-f-surfaces','SEED',[N('G4',67,0,2),N('F4',65,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],source:STAGE7_SOURCE}),
-  V('gf-cell-return','g-to-f-surfaces','GROW',[N('G4',67,0,1),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE}),
-  V('gf-cell-fan','g-to-f-surfaces','DENSIFY',[N('G4',67,0,.5),N('B4',71,.5,.5),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-return',morphType:'CHANGE',morphTargets:[0,1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE}),
+  V('gf-cell-seed','g-to-f-surfaces','SEED',[N('G4',67,0,2),N('F4',65,2,2)],{allowedPresentation:TEACH,allowedHarmony:['C'],source:STAGE7_SOURCE,structuralTargetIndices:[0,1],entryRole:'structural-target',exitRole:'structural-target'}),
+  V('gf-cell-return','g-to-f-surfaces','GROW',[N('G4',67,0,1),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-seed',morphType:'INSERT',morphTargets:[1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE,structuralTargetIndices:[0,3],entryRole:'structural-target',exitRole:'structural-target'}),
+  V('gf-cell-fan','g-to-f-surfaces','DENSIFY',[N('G4',67,0,.5),N('B4',71,.5,.5),N('A4',69,1,1),N('G4',67,2,1),N('F4',65,3,1)],{parentVariant:'gf-cell-return',morphType:'CHANGE',morphTargets:[0,1,2],allowedPresentation:LEARN,allowedHarmony:['C'],source:STAGE7_SOURCE,structuralTargetIndices:[0,4],entryRole:'structural-target',exitRole:'structural-target'}),
 ];
 export const variantById=id=>VARIANTS.find(v=>v.variantId===id)||null;
 export const variantsForFamily=familyId=>VARIANTS.filter(v=>v.familyId===familyId);
