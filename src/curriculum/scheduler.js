@@ -62,6 +62,17 @@ function buildProgramSlots(form,eventCount){
  }
  return out;
 }
+function warmupSlotFor(families,{currentStage=0,familyMastery={}}={}){
+ if(Number(currentStage)<=0)return null;
+ const candidates=uniq([...families,...familiesThroughStage(currentStage-1).slice().reverse()]).filter(f=>Number(familyMastery?.[f.familyId]?.attempts)>0);
+ for(const family of candidates){
+  const sequence=sequenceFor(family),index=sequence.findIndex(entry=>{const variant=variantById(entry.variantId);return variant?.coldReadEligible!==false&&variant?.allowedPresentation?.includes('COLD_READ');});
+  if(index<0)continue;
+  const entry=sequence[index],variant=variantById(entry.variantId);
+  return{family,variant,mode:'COLD_READ',sequenceIndex:index,harmonyFieldId:entry.harmonyFieldId||null,tonalFieldId:entry.tonalFieldId||null,harmonyTransfer:false,tonalFieldTransfer:false,formProgram:null,warmup:true};
+ }
+ return null;
+}
 function injectKeyTransferSlot(slots,request){
  if(!request||!slots.length)return null;
  const needed=fieldBeatsFor(variantBeats(request.variant));let index=-1;
@@ -83,12 +94,14 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  if(!families.length)throw new Error('no eligible phrase families');
  const formTargetBeats=musicalForm?Math.max(musicalForm.lengthBeats,Math.floor(targetSessionBeats/musicalForm.lengthBeats)*musicalForm.lengthBeats):targetSessionBeats;
  const slots=musicalForm?.slotPrograms?.length?buildProgramSlots(musicalForm,eventCount):buildSlots(families,eventCount,{familyMastery,dueFamilyIds,formIntegration:Boolean(musicalForm)});
+ const warmupSlot=!musicalForm?warmupSlotFor(families,{currentStage,familyMastery}):null;
+ if(warmupSlot&&slots.length)slots[0]=warmupSlot;
  const keyTransferRequest=key==='C'&&!musicalForm?nextKeyTransferRequest({keyProgress,familyMastery,currentStage}):null,keyTransferSlotIndex=injectKeyTransferSlot(slots,keyTransferRequest);
  const sessionForm=musicalForm?.formId||(currentStage>=9?'phrase-8':'training-4');
  const baseSeed={sessionId:`stage-${currentStage}-${Date.now()}`,stage:currentStage,bpm,key,sourceKey:'C',form:sessionForm,musicalFormId:musicalForm?.formId||null,formLengthBeats:musicalForm?.lengthBeats||null,beatsPerBar:4,countInBars:1};
  const events=[];let cursor=0;
  for(let i=0;i<slots.length;i++){
-  const {family,variant,mode,sequenceIndex,harmonyFieldId:sequenceHarmonyFieldId,tonalFieldId,harmonyTransfer,tonalFieldTransfer,formProgram,key:slotKey=null,keyTransfer=false}=slots[i],eventKey=slotKey||key,scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
+  const {family,variant,mode,sequenceIndex,harmonyFieldId:sequenceHarmonyFieldId,tonalFieldId,harmonyTransfer,tonalFieldTransfer,formProgram,key:slotKey=null,keyTransfer=false,warmup=false}=slots[i],eventKey=slotKey||key,scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
   if(cursor+fieldBeats>formTargetBeats&&events.length>=8)break;
   const startBeat=cursor,endBeat=startBeat+fieldBeats,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE';
   let singStartBeat;
@@ -126,7 +139,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   else if(isTeacher)prepareBeat=Math.min(startBeat+scoreBeats,singStartBeat);
   else prepareBeat=scoreBeats>4?startBeat:startBeat+4;
   const formPosition=musicalForm?Math.floor((((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats)/4):0;
-  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key:eventKey,sourceKey:'C',keyTransfer:Boolean(keyTransfer),sourceHarmonyFieldId,sourceHarmonyContext,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key:eventKey,sourceKey:'C',keyTransfer:Boolean(keyTransfer),warmup:Boolean(warmup),sourceHarmonyFieldId,sourceHarmonyContext,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+scoreBeats;}
   if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,baseSeed);
@@ -163,5 +176,5 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
    }
  }
  const totalBeats=cursor,totalBars=totalBeats/4,formHarmonyTimeline=musicalForm?transposeHarmonyTimelineFromC(expandFormHarmony(musicalForm,totalBeats),key):null;
- return{...baseSeed,totalBars,totalBeats,targetSessionBeats:formTargetBeats,requestedEventCount:eventCount,events,focusFamilyIds:families.map(f=>f.familyId),keyTransferEventId:keyTransferSlotIndex==null?null:events.find(e=>e.keyTransfer)?.eventId||null,formHarmonyTimeline};
+ return{...baseSeed,totalBars,totalBeats,targetSessionBeats:formTargetBeats,requestedEventCount:eventCount,events,focusFamilyIds:families.map(f=>f.familyId),warmupEventId:events.find(e=>e.warmup)?.eventId||null,keyTransferEventId:keyTransferSlotIndex==null?null:events.find(e=>e.keyTransfer)?.eventId||null,formHarmonyTimeline};
 }
