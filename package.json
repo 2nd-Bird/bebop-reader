@@ -4,5 +4,5 @@
   "private":true,
   "type":"module",
   "description":"Mobile-first jazz sight-singing PWA",
-  "scripts":{"serve":"python3 -m http.server 8080","check":"node tests.mjs && node tests-harmony.mjs && node tests-groove.mjs && node tests-stage8.mjs && node tests-stage9.mjs && node tests-stage10.mjs"}
+  "scripts":{"serve":"python3 -m http.server 8080","check":"node tests.mjs && node tests-harmony.mjs && node tests-groove.mjs && node tests-stage8.mjs && node tests-stage9.mjs && node tests-stage10.mjs && node tests-stage11.mjs"}
 }
