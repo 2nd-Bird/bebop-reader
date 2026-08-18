@@ -44,7 +44,7 @@ export function createSessionView({ app, navigate }) {
     clearScore() { currentEvent = null; currentScoreModel = null; clearMorphHighlight(score); morph.classList.add('hidden'); score.innerHTML = ''; playhead.classList.remove('active'); empty.classList.remove('hidden'); },
     showEvent(event, scoreModel) {
       currentEvent = event; currentScoreModel = scoreModel; empty.classList.add('hidden'); const rendered=renderNotation(score, scoreModel); applyScoreVisibility(score,event,scoreModel,rendered); resetFollower(score, viewport, playhead, scoreModel); playhead.classList.add('active');
-      if(event.presentationMode==='FLOW'){morph.textContent=event.flowAction==='RECALL'?'後半は思い出して':event.flowAction==='CONNECT'?'4小節つなげる':event.flowAction==='TRADE'?'聴いて、返す':'続けて歌う';morph.classList.remove('hidden');}
+      if(event.presentationMode==='FLOW'){morph.textContent=event.flowAction==='RECALL'?'後半は思い出して':event.flowAction==='CONNECT'?'4小節つなげる':event.flowAction==='TRADE'?'聴いて、返す':event.flowAction==='ONE_CHORUS'?'1コーラスを読む':'続けて歌う';morph.classList.remove('hidden');}
       else if(event.morph?.active){ morph.textContent=morphCopy[event.morph.type]||'少し変わる'; morph.classList.remove('hidden'); applyMorphHighlight(score,event.morph); }
       else morph.classList.add('hidden');
     },
