@@ -7,6 +7,7 @@ const assert=(condition,message)=>{if(!condition)throw new Error(message)};
 const pitches=id=>variantById(id).notes.filter(n=>!n.rest).map(n=>n.pitch);
 const structuralPitches=id=>{const v=variantById(id);return (v.structuralTargetIndices||[]).map(i=>v.notes[i]?.pitch)};
 const durations=id=>variantById(id).notes.map(n=>n.duration);
+const endBeat=id=>Math.max(...variantById(id).notes.map(n=>n.startBeat+n.duration));
 
 const stage8=STAGES.find(s=>s.stage===8);
 assert(stage8?.id==='ornament-direction','Stage 8 Ornament as Direction exists');
@@ -62,6 +63,9 @@ assert(turnGrow.parentVariant==='turn-do-seed','turn grows from direct D→C tar
 assert(turnGrow.structuralTargetIndices.join(',')==='1'&&turnGrow.notes[1].pitch==='C4','the first C is the structural target even though the surface continues');
 assert(turnGrow.continuationRole&&turnGrow.exitRole==='turn-completion','post-target turn continuation is explicit');
 assert(turn.variants.every(id=>variantById(id).allowedHarmony.join(',')==='C'),'turn theory does not create extra sounding harmony');
+
+// Current Stage 8 exercises deliberately fit the four-beat Training 4 scaffold, but that window is presentation scope, not the family invariant.
+assert([...ge.variants,...turn.variants].every(id=>endBeat(id)===4),'current Stage 8 examples fit the Training 4 scaffold');
 
 // Experience → Recognition → Naming: internal analysis terms must not leak into user-facing Family labels.
 const forbiddenTitleTerms=['ornament','passing','neighbor','appoggiatura','turn','chromatic','surface','cell'];
