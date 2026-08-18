@@ -5,6 +5,7 @@ import{tonalFieldById}from'./tonalFields.js';
 import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js';
 import{buildClosingFlowEvent,buildClosingTradeEvent,buildOneChorusFlowEvent}from'./flow.js';
 import{buildPairFlowEvent}from'./flowPair.js';
+import{buildTrainingClosingFlowEvent}from'./trainingClosingFlow.js';
 import{cBluesRepeatReady,cBluesMutationReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesStageReady}from'./mastery.js';
 import{nextKeyTransferRequest}from'./keyMastery.js';
 import{keyTransferSupported,transposeHarmonyTimelineFromC}from'./keyTransfer.js';
@@ -75,10 +76,10 @@ function warmupSlotFor(families,{currentStage=0,familyMastery={}}={}){
  return null;
 }
 function injectKeyTransferSlot(slots,request){
- if(!request||!slots.length)return null;
+ if(!request||slots.length<3)return null;
  const needed=fieldBeatsFor(variantBeats(request.variant));let index=-1;
- for(let i=slots.length-1;i>=0;i--){if(fieldBeatsFor(variantBeats(slots[i].variant))>=needed){index=i;break;}}
- if(index<0)index=Math.max(0,slots.length-2);
+ for(let i=slots.length-2;i>=1;i--){if(fieldBeatsFor(variantBeats(slots[i].variant))>=needed){index=i;break;}}
+ if(index<0)return null;
  slots[index]=request;return index;
 }
 export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesStageReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
@@ -147,6 +148,10 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   events.push(event);cursor=endBeat;
  }
  if(!events.length)throw new Error('session has no events');
+ if(!musicalForm){
+   const last=events.at(-1),closing=buildTrainingClosingFlowEvent({sourceEvent:last,startBeat:last.startBeat,endBeat:last.endBeat,bpm,eventId:`${last.eventId}-closing-flow`});
+   if(closing)events.splice(events.length-1,1,closing);
+ }
  if(musicalForm?.closingFlowProgram){
    const requestedFlow=['REPEAT','MUTATION','CONNECT','TRADE','RECALL','ONE_CHORUS'].includes(flowActionOverride)?flowActionOverride:null;
    const flowAction=requestedFlow||(!cBluesRepeatReady(familyMastery)?'REPEAT':!cBluesMutationReady(familyMastery)?'MUTATION':!cBluesConnectReady(familyMastery)?'CONNECT':!cBluesTradeReady(familyMastery)?'TRADE':!cBluesRecallReady(familyMastery)?'RECALL':'ONE_CHORUS');
