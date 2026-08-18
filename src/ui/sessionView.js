@@ -14,9 +14,13 @@ const phaseCopyFor = keyLabel => ({
 const morphCopy={INSERT:'間を埋める',EXTEND:'少し伸びる',CHANGE:'少し変わる',DENSIFY:'少し細かく'};
 const flowCopy={REPEAT:'同じ動きを続ける',MUTATION:'同じ動き、少し変わる',CONNECT:'4小節つなげる',TRADE:'聴いて、返す',RECALL:'後半は思い出して',ONE_CHORUS:'1コーラスを読む'};
 const starsHTML = n => `<div class="star-row" aria-label="${n} of 5 stars">${[1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}">★</span>`).join('')}</div>`;
+const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function sessionSummaryMarkup(summary={}){
-  return `<section class="result-hero result-hero-v08 session-summary"><span class="eyebrow">SESSION COMPLETED</span>${starsHTML(summary.stars || 0)}<h1>音楽の中で読み切った。</h1><p>Reading ${summary.readScore}</p></section><details class="performance-details card"><summary>歌唱の詳細を見る</summary><div class="detail-copy">読譜の主結果は上の★とReadingです。</div><div class="micro-metrics"><span>Pitch ${summary.pitch}</span><span>Time ${summary.time}</span><span>Flow ${summary.flow}</span></div></details><button class="primary big" id="session-done">今日へ戻る →</button>`;
+  const strengthened=summary.strengthenedFamilies||[],unlocks=summary.unlocks||[],streak=summary.streak==null?'':` · Streak ${Number(summary.streak)||0}日`;
+  const strengthenedHTML=strengthened.length?`<section class="performance-details card"><span class="eyebrow">STRENGTHENED</span><h2>読める動きが増えた。</h2><p>${strengthened.map(x=>safe(x.title)).join(' · ')}</p></section>`:'';
+  const unlockHTML=unlocks.length?`<section class="performance-details card"><span class="eyebrow">UNLOCK</span><h2>次の音楽が開いた。</h2><p>${unlocks.map(x=>safe(x.title)).join(' · ')}</p></section>`:'';
+  return `<section class="result-hero result-hero-v08 session-summary"><span class="eyebrow">SESSION COMPLETED</span>${starsHTML(summary.stars || 0)}<h1>音楽の中で読み切った。</h1><p>Reading ${summary.readScore}${streak}</p></section>${strengthenedHTML}${unlockHTML}<details class="performance-details card"><summary>歌唱の詳細を見る</summary><div class="detail-copy">読譜の主結果は上の★とReadingです。</div><div class="micro-metrics"><span>Pitch ${summary.pitch}</span><span>Time ${summary.time}</span><span>Flow ${summary.flow}</span></div></details><button class="primary big" id="session-done">今日へ戻る →</button>`;
 }
 
 function applyScoreVisibility(score,event,scoreModel,rendered){
