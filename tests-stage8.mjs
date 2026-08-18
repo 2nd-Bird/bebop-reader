@@ -72,7 +72,8 @@ for(const family of [ge,turn]){
 assert(ge.title==='G → E · Different Routes','G→E family uses an experiential label');
 assert(turn.title==='Back to DO','C-return family uses an experiential label');
 
-const plan=buildDailySessionPlan({currentStage:8,eventCount:24});
+// The scheduler interleaves two focus families, so use enough events to traverse all six variants of Family A.
+const plan=buildDailySessionPlan({currentStage:8,eventCount:32});
 assert(plan.focusFamilyIds.join(',')==='ornament-to-mi,turn-to-do','Stage 8 session focuses both target-directed families');
 for(const id of ['ge-orn-passing','ge-orn-appoggiatura','ge-orn-neighbor','ge-orn-chromatic','ge-orn-pretarget','turn-do-grow'])assert(plan.events.some(e=>e.variantId===id&&e.presentationMode==='BUILD'),`${id} appears as BUILD before later reading`);
 assert(plan.events.filter(e=>['ornament-to-mi','turn-to-do'].includes(e.familyId)).every(e=>e.harmonyFieldId==='static-c'),'Stage 8 keeps a neutral C field while ornament direction is learned');
