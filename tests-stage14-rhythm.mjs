@@ -2,7 +2,7 @@ import {musicalFormById,chordAtFormBeat} from './src/curriculum/musicalForms.js'
 import {applyFormMove,semitoneShiftForDominant} from './src/curriculum/formMoves.js';
 import {variantById} from './src/curriculum/variantRegistry.js';
 import {buildDailySessionPlan,recommendedFormIdForStage14} from './src/curriculum/scheduler.js';
-import {emptyFamilyMastery,applyEventResult,cBluesFormReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesStageReady} from './src/curriculum/mastery.js';
+import {emptyFamilyMastery,applyEventResult,cBluesFormReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesOneChorusReady,cBluesStageReady} from './src/curriculum/mastery.js';
 import {sessionHarmonyPulses} from './src/audio/groove.js';
 import {createTimeline} from './src/session/timeline.js';
 
@@ -56,20 +56,23 @@ for(const [familyId,variantId] of [['g-to-f-surfaces','gf-cell-seed'],['density-
  evidence[familyId]=record;
 }
 assert(cBluesFormReady(evidence),'successful I / IV / V cold transfer for both integrated families completes the cold form gate');
-assert(!cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesStageReady(evidence),'cold form transfer alone is not the late-Stage-14 FLOW gate');
+assert(!cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence)&&!cBluesStageReady(evidence),'cold form transfer alone is not the late-Stage-14 FLOW gate');
 assert(recommendedFormIdForStage14(evidence)==='c-blues-12','C Blues continues until the late FLOW sequence is complete');
 
 const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:7,harmonyContext:'C7',harmonyFieldId:'form:c-blues-12:flow'};
 evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'CONNECT'},{readScore:88,stars:4},3000);
-assert(cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence),'successful four-bar Connect is required before Trade');
+assert(cBluesConnectReady(evidence)&&!cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence),'successful four-bar Connect is required before Trade');
 assert(recommendedFormIdForStage14(evidence)==='c-blues-12','Connect alone keeps the learner in C Blues for Trade');
 evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'TRADE'},{readScore:86,stars:4},4000);
-assert(cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence),'successful Trade is required before partial-score Recall');
+assert(cBluesTradeReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence),'successful Trade is required before partial-score Recall');
 assert(recommendedFormIdForStage14(evidence)==='c-blues-12','Trade still keeps the learner in C Blues for Recall');
 evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'RECALL'},{readScore:84,stars:4},5000);
-assert(cBluesRecallReady(evidence)&&cBluesStageReady(evidence),'successful Recall after Trade completes the C Blues Stage 14 gate');
-assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes only after cold transfer + Connect + Trade + Recall');
+assert(cBluesRecallReady(evidence)&&!cBluesOneChorusReady(evidence)&&!cBluesStageReady(evidence),'successful Recall unlocks one chorus but no longer completes the C Blues gate by itself');
+assert(recommendedFormIdForStage14(evidence)==='c-blues-12','after Recall the learner remains in C Blues for a complete chorus');
+evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'ONE_CHORUS'},{readScore:82,stars:4},6000);
+assert(cBluesOneChorusReady(evidence)&&cBluesStageReady(evidence),'successful one-chorus read after Recall completes the C Blues Stage 14 gate');
+assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes only after cold transfer + Connect + Trade + Recall + one chorus');
 const autoPlan=buildDailySessionPlan({currentStage:14,familyMastery:evidence,bpm:60,eventCount:20,targetSessionBeats:320});
-assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes after the complete C Blues gate');
+assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes only after the complete C Blues one-chorus gate');
 
-console.log('OK: Rhythm Changes unlocks only after C Blues cold transfer + Connect + Trade + Recall, then reuses known material through the full form');
+console.log('OK: Rhythm Changes unlocks only after C Blues cold transfer + Connect + Trade + Recall + one complete chorus, then reuses known material through the full form');
