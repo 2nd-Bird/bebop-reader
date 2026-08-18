@@ -64,7 +64,8 @@ function buildProgramSlots(form,eventCount){
 }
 function warmupSlotFor(families,{currentStage=0,familyMastery={}}={}){
  if(Number(currentStage)<=0)return null;
- const candidates=uniq([...families,...familiesThroughStage(currentStage-1).slice().reverse()]).filter(f=>Number(familyMastery?.[f.familyId]?.attempts)>0);
+ const focusedPrior=families.filter(f=>Number(f?.stage)<Number(currentStage));
+ const candidates=uniq([...focusedPrior,...familiesThroughStage(currentStage-1).slice().reverse()]).filter(f=>Number(familyMastery?.[f.familyId]?.attempts)>0);
  for(const family of candidates){
   const sequence=sequenceFor(family),index=sequence.findIndex(entry=>{const variant=variantById(entry.variantId);return variant?.coldReadEligible!==false&&variant?.allowedPresentation?.includes('COLD_READ');});
   if(index<0)continue;
