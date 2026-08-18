@@ -11,6 +11,10 @@ export function validateCurriculum(){
   if(!famIds.has(v.familyId))throw new Error(`${v.variantId}: missing family`);
   if(v.parentVariant){const p=variantById(v.parentVariant);if(!p)throw new Error(`${v.variantId}: missing parent`);if(p.familyId!==v.familyId)throw new Error(`${v.variantId}: parent family mismatch`)}
   if(!v.allowedKeys?.length||!v.allowedHarmony?.length||!v.allowedPresentation?.length)throw new Error(`${v.variantId}: missing allowed scope`);
+  if(v.structuralTargetIndices!=null){
+   if(!Array.isArray(v.structuralTargetIndices)||!v.structuralTargetIndices.length)throw new Error(`${v.variantId}: structuralTargetIndices must be a non-empty array`);
+   for(const i of v.structuralTargetIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid structural target index ${i}`);}
+  }
   const field=defaultHarmonyFieldFor(v.allowedHarmony);if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')}`);
  }
  return true;
