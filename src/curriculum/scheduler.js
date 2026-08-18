@@ -94,18 +94,18 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   if(singStartBeat+scoreBeats>endBeat)singStartBeat=endBeat-scoreBeats;
   const singEndBeat=singStartBeat+scoreBeats;
 
-  let harmonyField=null,harmonyFieldId=null,sourceHarmonyFieldId=null,harmonyTimeline,harmonyContext;
+  let harmonyField=null,harmonyFieldId=null,sourceHarmonyFieldId=null,sourceHarmonyContext=null,harmonyTimeline,harmonyContext;
   if(musicalForm){
-    const sourceTimeline=sliceFormHarmony(musicalForm,singStartBeat,scoreBeats),sourceChord=sourceTimeline[0]?.chord||'C';
+    const sourceTimeline=sliceFormHarmony(musicalForm,singStartBeat,scoreBeats);sourceHarmonyContext=sourceTimeline[0]?.chord||'C';
     harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,key);harmonyContext=harmonyTimeline[0]?.chord||key;
-    sourceHarmonyFieldId=`form:${musicalForm.formId}:${sourceChord}`;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
+    sourceHarmonyFieldId=`form:${musicalForm.formId}:${sourceHarmonyContext}`;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
   }else{
     const overrideId=harmonyFieldOverrides[variant.variantId]||harmonyFieldOverrides[family.familyId]||null;
     harmonyField=overrideId?harmonyFieldById(overrideId):sequenceHarmonyFieldId?harmonyFieldById(sequenceHarmonyFieldId):defaultHarmonyFieldFor(variant.allowedHarmony,{scoreBeats});
     if(!harmonyField)throw new Error(`${variant.variantId}: harmony field not found for ${scoreBeats} beats`);
     const sourceTimeline=harmonyField.timeline.map(x=>({...x}));
     if(sourceTimeline.some(x=>!variant.allowedHarmony.includes(x.chord)))throw new Error(`${variant.variantId}: harmony field ${harmonyField.harmonyFieldId} is outside allowed scope`);
-    sourceHarmonyFieldId=harmonyField.harmonyFieldId;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
+    sourceHarmonyContext=sourceTimeline[0]?.chord||'C';sourceHarmonyFieldId=harmonyField.harmonyFieldId;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
     harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,key);harmonyContext=harmonyTimeline[0]?.chord||key;
   }
 
@@ -117,7 +117,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   else if(isTeacher)prepareBeat=Math.min(startBeat+scoreBeats,singStartBeat);
   else prepareBeat=scoreBeats>4?startBeat:startBeat+4;
   const formPosition=musicalForm?Math.floor((((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats)/4):0;
-  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,sourceKey:'C',sourceHarmonyFieldId,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,sourceKey:'C',sourceHarmonyFieldId,sourceHarmonyContext,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+scoreBeats;}
   if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,baseSeed);
