@@ -53,6 +53,15 @@ export function cBluesConnectReady(familyMastery={}){const r=familyMastery?.['g-
 export function cBluesTradeReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesConnectReady(familyMastery)&&hasFlowAction(r,'c-blues-12','TRADE');}
 export function cBluesRecallReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesTradeReady(familyMastery)&&hasFlowAction(r,'c-blues-12','RECALL');}
 export function cBluesOneChorusReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesRecallReady(familyMastery)&&hasFlowAction(r,'c-blues-12','ONE_CHORUS');}
+export function nextCBluesFlowAction(familyMastery={}){
+ if(!cBluesRepeatReady(familyMastery))return'REPEAT';
+ if(!cBluesMutationReady(familyMastery))return'MUTATION';
+ if(!cBluesConnectReady(familyMastery))return'CONNECT';
+ if(!cBluesTradeReady(familyMastery))return'TRADE';
+ if(!cBluesRecallReady(familyMastery))return'RECALL';
+ if(!cBluesOneChorusReady(familyMastery))return'ONE_CHORUS';
+ return null;
+}
 export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesOneChorusReady(familyMastery);}
 export function deriveStageProgress(familyMastery,currentStage=0,maxStage=3){
  let stage=clamp(Number(currentStage)||0,0,maxStage),advanced=false;
