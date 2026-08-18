@@ -103,7 +103,8 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
     const samples = stopSessionCapture();
     for (const event of timeline.events) if (!scored.has(event.eventId) && transport.currentBeat() >= event.singEndBeat) scoreOne(event, samples);
     stopOutput(); transport.stop(); stopMic(); view.setCount(null);
-    const summary=summarizeSession(results);onSessionComplete?.(summary,plan);view.showSummary(summary);
+    const baseSummary=summarizeSession(results),rewards=onSessionComplete?.(baseSummary,plan)||{};
+    view.showSummary({...baseSummary,...rewards});
   }
 
   function frame() {
