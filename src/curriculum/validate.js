@@ -1,4 +1,4 @@
-import{PHRASE_FAMILIES}from'./phraseFamilies.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';
+import{PHRASE_FAMILIES}from'./phraseFamilyRegistry.js';import{VARIANTS,variantById}from'./variantRegistry.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor,harmonyFieldById}from'./harmonyFields.js';import{tonalFieldById}from'./tonalFields.js';
 const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
  const famIds=new Set(),contextManagedVariantIds=new Set();
@@ -26,6 +26,10 @@ export function validateCurriculum(){
   if(v.structuralTargetIndices!=null){
    if(!Array.isArray(v.structuralTargetIndices)||!v.structuralTargetIndices.length)throw new Error(`${v.variantId}: structuralTargetIndices must be a non-empty array`);
    for(const i of v.structuralTargetIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid structural target index ${i}`);}
+  }
+  if(v.restartEntryIndices?.length){
+   if(v.operationType!=='CELL_RESTART_EXTENSION')throw new Error(`${v.variantId}: restart entry metadata requires CELL_RESTART_EXTENSION`);
+   for(const i of v.restartEntryIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid restart entry index ${i}`);}
   }
   if(!contextManagedVariantIds.has(v.variantId)){
    const scoreBeats=variantBeats(v),field=defaultHarmonyFieldFor(v.allowedHarmony,{scoreBeats});if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')} at ${scoreBeats} beats`);

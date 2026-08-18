@@ -27,10 +27,11 @@ export function applyMorphHighlight(container,descriptor,{active=true}={}){
     node.classList.toggle('morph-insert',hit&&descriptor?.type==='INSERT');
     node.classList.toggle('morph-extend',hit&&descriptor?.type==='EXTEND');
     node.classList.toggle('morph-change',hit&&descriptor?.type==='CHANGE');
+    node.classList.toggle('morph-densify',hit&&descriptor?.type==='DENSIFY');
   });
 }
 
 export function clearMorphHighlight(container){
   if(!container)return;
-  container.querySelectorAll('.morph-note,.morph-insert,.morph-extend,.morph-change').forEach(node=>node.classList.remove('morph-note','morph-insert','morph-extend','morph-change'));
+  container.querySelectorAll('.morph-note,.morph-insert,.morph-extend,.morph-change,.morph-densify').forEach(node=>node.classList.remove('morph-note','morph-insert','morph-extend','morph-change','morph-densify'));
 }
