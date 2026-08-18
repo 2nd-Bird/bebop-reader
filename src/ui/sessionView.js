@@ -2,14 +2,14 @@ import { renderNotation } from '../notation.js';
 import { resetFollower, updateFollower } from '../notation/follow.js';
 import { applyMorphHighlight, clearMorphHighlight } from '../notation/morph.js';
 
-const phaseCopy = {
-  SPACE: ['LISTEN', '拍とCの中にいる'],
+const phaseCopyFor = keyLabel => ({
+  SPACE: ['LISTEN', `拍と${keyLabel}の中にいる`],
   MODEL: ['LISTEN', '耳で受け取る'],
   ECHO: ['LISTEN AGAIN', '答えを拍の中で聴く'],
   AUDIATE: ['SEE', '譜面から先に音を聴く'],
   SING: ['SING', '止まらず、その場所で歌う'],
   FEEDBACK: ['FLOW', '音楽は続く'],
-};
+});
 const morphCopy={INSERT:'間を埋める',EXTEND:'少し伸びる',CHANGE:'少し変わる',DENSIFY:'少し細かく'};
 const starsHTML = n => `<div class="star-row" aria-label="${n} of 5 stars">${[1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}">★</span>`).join('')}</div>`;
 
@@ -20,8 +20,9 @@ function applyScoreVisibility(score,event,scoreModel,rendered){
   mask.className='score-recall-mask';mask.style.left=`${left}px`;mask.style.width=`${Math.max(0,rendered.canvasWidth-left)}px`;mask.setAttribute('aria-hidden','true');score.appendChild(mask);
 }
 
-export function createSessionView({ app, navigate }) {
-  app.innerHTML = `<div class="app-shell is-compact session-v09"><header class="topbar"><button class="brand session-close"><span class="brand-mark">B</span><span><b>Bebop Reader</b><small>READ → SING → FLOW</small></span></button><div class="key-pill"><span>KEY</span><b>C</b></div></header><main class="session-main"><div class="session-meta"><button class="icon-btn session-close">×</button><div class="session-progress"><div id="session-progress-fill"></div></div><span id="session-position">READY</span></div><section class="session-intro"><span class="eyebrow">CONTINUOUS SESSION</span><h1>音楽を止めずに読む。</h1><p>最初の4カウント後は、beatが流れ続けます。</p></section><section class="score-card score-card-v08 session-score-card"><div class="morph-badge hidden" id="session-morph"></div><div class="score-wrap" id="session-score-viewport"><div id="session-score"></div><div id="session-playhead" class="playhead"></div></div><div class="session-empty" id="session-empty">次の譜面は音楽の中で現れます</div></section><div class="session-phase" id="session-phase"><span class="pulse-dot"></span><b>READY</b><small>STARTを一度タップ</small></div><div class="session-count hidden" id="session-count">1</div><div class="session-feedback" id="session-feedback"></div><button class="primary big" id="session-start">START <span>→</span></button><button class="primary big hidden" id="session-resume">RESUME <span>→</span></button><div class="session-debug hidden" id="session-debug"></div></main><div class="build-tag">v0.9 slice</div></div>`;
+export function createSessionView({ app, navigate, key='C' }) {
+  const keyLabel=key==='Bb'?'B♭':key,phaseCopy=phaseCopyFor(keyLabel);
+  app.innerHTML = `<div class="app-shell is-compact session-v09"><header class="topbar"><button class="brand session-close"><span class="brand-mark">B</span><span><b>Bebop Reader</b><small>READ → SING → FLOW</small></span></button><div class="key-pill"><span>KEY</span><b>${keyLabel}</b></div></header><main class="session-main"><div class="session-meta"><button class="icon-btn session-close">×</button><div class="session-progress"><div id="session-progress-fill"></div></div><span id="session-position">READY</span></div><section class="session-intro"><span class="eyebrow">CONTINUOUS SESSION</span><h1>音楽を止めずに読む。</h1><p>最初の4カウント後は、beatが流れ続けます。</p></section><section class="score-card score-card-v08 session-score-card"><div class="morph-badge hidden" id="session-morph"></div><div class="score-wrap" id="session-score-viewport"><div id="session-score"></div><div id="session-playhead" class="playhead"></div></div><div class="session-empty" id="session-empty">次の譜面は音楽の中で現れます</div></section><div class="session-phase" id="session-phase"><span class="pulse-dot"></span><b>READY</b><small>STARTを一度タップ</small></div><div class="session-count hidden" id="session-count">1</div><div class="session-feedback" id="session-feedback"></div><button class="primary big" id="session-start">START <span>→</span></button><button class="primary big hidden" id="session-resume">RESUME <span>→</span></button><div class="session-debug hidden" id="session-debug"></div></main><div class="build-tag">v0.9 slice</div></div>`;
   const root = app.querySelector('.session-v09'), score = root.querySelector('#session-score'), viewport = root.querySelector('#session-score-viewport'), playhead = root.querySelector('#session-playhead'), phase = root.querySelector('#session-phase'), count = root.querySelector('#session-count'), feedback = root.querySelector('#session-feedback'), start = root.querySelector('#session-start'), resume = root.querySelector('#session-resume'), progress = root.querySelector('#session-progress-fill'), position = root.querySelector('#session-position'), empty = root.querySelector('#session-empty'), debug = root.querySelector('#session-debug'), morph = root.querySelector('#session-morph');
   const debugEnabled = new URLSearchParams(location.search).get('debug') === '1'; if (debugEnabled) debug.classList.remove('hidden');
   let currentEvent = null, currentScoreModel = null;
@@ -54,7 +55,7 @@ export function createSessionView({ app, navigate }) {
       if (currentEvent && currentScoreModel && event?.eventId === currentEvent.eventId) updateFollower(score, viewport, playhead, currentScoreModel, noteProgress, { autoScroll: true });
       if (debugEnabled) {
         const session = audio?.audioSession;
-        debug.textContent = `beat ${beat.toFixed(2)} | bar ${bar}:${beatInBar} | ${event?.eventId || '-'} | ${event?.presentationMode||'-'} | ${phaseName} | ctx ${audio?.contextState||'-'} | session ${session?.type||'-'}${session?.error?'!':''} | groove→${audio?.scheduledBeats??'-'}`;
+        debug.textContent = `key ${keyLabel} | beat ${beat.toFixed(2)} | bar ${bar}:${beatInBar} | ${event?.eventId || '-'} | ${event?.presentationMode||'-'} | ${phaseName} | ctx ${audio?.contextState||'-'} | session ${session?.type||'-'}${session?.error?'!':''} | groove→${audio?.scheduledBeats??'-'}`;
       }
     },
     showFeedback(result) { feedback.textContent = result.stars >= 3 ? '✓' : '△'; feedback.classList.add('show'); setTimeout(() => feedback.classList.remove('show'), 650); },
