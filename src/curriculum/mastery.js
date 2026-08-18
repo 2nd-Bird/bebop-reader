@@ -47,7 +47,9 @@ export function cBluesFormReady(familyMastery={}){
  return familyIds.every(familyId=>contexts.every(chord=>hasColdFormContext(familyMastery?.[familyId], 'c-blues-12', familyId, chord)));
 }
 export function hasFlowAction(record,formId,action,minFlow=.7){return Boolean(record?.flowRead>=minFlow&&new Set(record?.flowFormIds||[]).has(formId)&&new Set(record?.flowActions||[]).has(action));}
-export function cBluesConnectReady(familyMastery={}){return hasFlowAction(familyMastery?.['g-to-f-surfaces'],'c-blues-12','CONNECT');}
+export function cBluesRepeatReady(familyMastery={}){return hasFlowAction(familyMastery?.['g-to-f-surfaces'],'c-blues-12','REPEAT');}
+export function cBluesMutationReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesRepeatReady(familyMastery)&&hasFlowAction(r,'c-blues-12','MUTATION');}
+export function cBluesConnectReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesMutationReady(familyMastery)&&hasFlowAction(r,'c-blues-12','CONNECT');}
 export function cBluesTradeReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesConnectReady(familyMastery)&&hasFlowAction(r,'c-blues-12','TRADE');}
 export function cBluesRecallReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesTradeReady(familyMastery)&&hasFlowAction(r,'c-blues-12','RECALL');}
 export function cBluesOneChorusReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return cBluesRecallReady(familyMastery)&&hasFlowAction(r,'c-blues-12','ONE_CHORUS');}
