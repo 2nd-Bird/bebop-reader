@@ -3,8 +3,11 @@ import { scheduleClickAtTime } from './countIn.js';
 
 const NOTE_PC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 function chordRootFreq(chord,key='C'){
-  const m=String(chord||key).match(/^([A-G])([#b]?)/);if(!m)return 130.81;
-  let pc=NOTE_PC[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0),midi=48+((pc%12)+12)%12;if(midi>53)midi-=12;
+  const m=String(chord||key).match(/^([A-G])([#b]?)/);if(!m)return 261.63;
+  let pc=NOTE_PC[m[1]]+(m[2]==='#'?1:m[2]==='b'?-1:0),midi=60+((pc%12)+12)%12;
+  // Keep the tonal orientation in a phone-speaker-safe register. C–G live in octave 4;
+  // A/B wrap to octave 3 so every root remains roughly 220–392 Hz instead of dropping to G2/C3.
+  if(midi>67)midi-=12;
   return 440*Math.pow(2,(midi-69)/12);
 }
 function scheduleTone({ time, freq, duration, volume, type = 'sine' }) {
@@ -64,6 +67,6 @@ export function startGroove({ transport, key = 'C', plan=null, totalBeats = Infi
   scheduleThroughBeat(Math.min(totalBeats, nextBeat + primeBeats));
   const schedule = () => {if (stopped || transport.state === 'stopped' || transport.state === 'paused') return;const horizonBeat = transport.beatAtTime(ctx.currentTime + lookaheadSec);scheduleThroughBeat(horizonBeat);};
   const timer = setInterval(schedule, intervalMs);
-  const stop = () => {if (stopped) return;stopped = true;clearInterval(timer);for (const cancel of cancelNodes) cancel();};
+  const stop = () => {if(stopped)return;stopped=true;clearInterval(timer);for(const cancel of cancelNodes)cancel();};
   stop.status = () => ({ nextBeat, scheduledBeats, lookaheadSec, contextState: ctx.state });return stop;
 }

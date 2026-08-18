@@ -46,6 +46,10 @@ export function cBluesFormReady(familyMastery={}){
  const familyIds=['g-to-f-surfaces','density-g-to-f'],contexts=['C7','F7','G7'];
  return familyIds.every(familyId=>contexts.every(chord=>hasColdFormContext(familyMastery?.[familyId], 'c-blues-12', familyId, chord)));
 }
+export function hasFlowAction(record,formId,action,minFlow=.7){return Boolean(record?.flowRead>=minFlow&&new Set(record?.flowFormIds||[]).has(formId)&&new Set(record?.flowActions||[]).has(action));}
+export function cBluesConnectReady(familyMastery={}){return hasFlowAction(familyMastery?.['g-to-f-surfaces'],'c-blues-12','CONNECT');}
+export function cBluesRecallReady(familyMastery={}){const r=familyMastery?.['g-to-f-surfaces'];return hasFlowAction(r,'c-blues-12','CONNECT')&&hasFlowAction(r,'c-blues-12','RECALL');}
+export function cBluesStageReady(familyMastery={}){return cBluesFormReady(familyMastery)&&cBluesRecallReady(familyMastery);}
 export function deriveStageProgress(familyMastery,currentStage=0,maxStage=3){
  let stage=clamp(Number(currentStage)||0,0,maxStage),advanced=false;
  const required=familiesForStage(stage);

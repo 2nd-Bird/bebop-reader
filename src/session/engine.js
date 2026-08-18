@@ -10,6 +10,7 @@ import { createTransport } from './transport.js';
 import { createTimeline } from './timeline.js';
 
 const clamp01 = n => Math.max(0, Math.min(1, n));
+const MODEL_VOLUME = .34;
 
 export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult = null, onSessionComplete = null }) {
   const timeline = createTimeline(plan);
@@ -24,13 +25,13 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
   function scheduleFutureModels(fromBeat = 0) {
     for (const event of timeline.events) {
       if (event.modelPolicy === 'TEACHER_CALL' && event.modelStartBeat >= fromBeat) {
-        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: .22, type: 'triangle' }));
+        modelStops.push(scheduleModelPhrase({ transport, scoreModel: event.scoreModel, startBeat: event.modelStartBeat, volume: MODEL_VOLUME, type: 'triangle' }));
       }
     }
     for (const echo of echoWindows) {
       if (echo.startBeat < fromBeat) continue;
       const source = timeline.events.find(event => event.eventId === echo.sourceEventId);
-      if (source) modelStops.push(scheduleModelPhrase({ transport, scoreModel: source.scoreModel, startBeat: echo.startBeat, volume: .22, type: 'triangle' }));
+      if (source) modelStops.push(scheduleModelPhrase({ transport, scoreModel: source.scoreModel, startBeat: echo.startBeat, volume: MODEL_VOLUME, type: 'triangle' }));
     }
   }
 
@@ -51,7 +52,7 @@ export function createSessionEngine({ plan, view, latencyMs = 0, onEventResult =
       }
       const echoEndBeat=echoSlot.startBeat+sourceBeats;
       echoWindows.push({eventId:echoSlot.eventId,startBeat:echoSlot.startBeat,endBeat:echoEndBeat,sourceEventId:event.eventId});
-      if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:.22,type:'triangle'}));
+      if(!interrupted) modelStops.push(scheduleModelPhrase({transport,scoreModel:event.scoreModel,startBeat:echoSlot.startBeat,volume:MODEL_VOLUME,type:'triangle'}));
     }
     scheduleDelayedRetry(timeline.events,event,{minGapEvents:2});
   }

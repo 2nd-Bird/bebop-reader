@@ -2,7 +2,7 @@ import {musicalFormById,chordAtFormBeat} from './src/curriculum/musicalForms.js'
 import {applyFormMove,semitoneShiftForDominant} from './src/curriculum/formMoves.js';
 import {variantById} from './src/curriculum/variantRegistry.js';
 import {buildDailySessionPlan,recommendedFormIdForStage14} from './src/curriculum/scheduler.js';
-import {emptyFamilyMastery,applyEventResult,cBluesFormReady} from './src/curriculum/mastery.js';
+import {emptyFamilyMastery,applyEventResult,cBluesFormReady,cBluesConnectReady,cBluesRecallReady,cBluesStageReady} from './src/curriculum/mastery.js';
 import {sessionHarmonyPulses} from './src/audio/groove.js';
 import {createTimeline} from './src/session/timeline.js';
 
@@ -55,9 +55,18 @@ for(const [familyId,variantId] of [['g-to-f-surfaces','gf-cell-seed'],['density-
  for(const [i,chord] of ['C7','F7','G7'].entries())record=applyEventResult(record,{familyId,variantId,presentationMode:'COLD_READ',formTransfer:true,form:'c-blues-12',formPosition:[2,5,11][i],harmonyContext:chord,harmonyFieldId:`form:c-blues-12:${chord}`},{readScore:90,stars:4},2000+i);
  evidence[familyId]=record;
 }
-assert(cBluesFormReady(evidence),'successful I / IV / V cold transfer for both integrated families completes the C Blues form gate');
-assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes after C Blues transfer evidence');
-const autoPlan=buildDailySessionPlan({currentStage:14,familyMastery:evidence,bpm:60,eventCount:20,targetSessionBeats:320});
-assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes without requiring a manual form chooser once Blues is ready');
+assert(cBluesFormReady(evidence),'successful I / IV / V cold transfer for both integrated families completes the cold form gate');
+assert(!cBluesConnectReady(evidence)&&!cBluesRecallReady(evidence)&&!cBluesStageReady(evidence),'cold form transfer alone is not the late-Stage-14 FLOW gate');
+assert(recommendedFormIdForStage14(evidence)==='c-blues-12','C Blues continues until Connect and Recall scaffold-removal evidence exists');
 
-console.log('OK: Rhythm Changes reuses one known Relative Major Variant through E7/A7/D7/G7 and unlocks only after successful C Blues form transfer');
+const flowBase={familyId:'g-to-f-surfaces',variantId:null,presentationMode:'FLOW',formTransfer:true,form:'c-blues-12',formPosition:7,harmonyContext:'C7',harmonyFieldId:'form:c-blues-12:flow'};
+evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'CONNECT'},{readScore:88,stars:4},3000);
+assert(cBluesConnectReady(evidence)&&!cBluesRecallReady(evidence),'successful four-bar Connect is required before partial-score Recall');
+assert(recommendedFormIdForStage14(evidence)==='c-blues-12','Connect alone still keeps the learner in C Blues for Recall');
+evidence['g-to-f-surfaces']=applyEventResult(evidence['g-to-f-surfaces'],{...flowBase,flowAction:'RECALL'},{readScore:84,stars:4},4000);
+assert(cBluesRecallReady(evidence)&&cBluesStageReady(evidence),'successful Recall completes the C Blues Stage 14 gate');
+assert(recommendedFormIdForStage14(evidence)==='rhythm-changes-32','next Stage 14 session advances to Rhythm Changes only after cold transfer + Connect + Recall');
+const autoPlan=buildDailySessionPlan({currentStage:14,familyMastery:evidence,bpm:60,eventCount:20,targetSessionBeats:320});
+assert(autoPlan.musicalFormId==='rhythm-changes-32','normal Scheduler selects Rhythm Changes after the complete C Blues gate');
+
+console.log('OK: Rhythm Changes reuses one known Relative Major Variant through E7/A7/D7/G7 and unlocks only after C Blues cold transfer + Connect + Recall');
