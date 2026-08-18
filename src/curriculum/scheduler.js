@@ -6,6 +6,7 @@ import{musicalFormById,expandFormHarmony,sliceFormHarmony}from'./musicalForms.js
 import{buildClosingFlowEvent,buildClosingTradeEvent,buildOneChorusFlowEvent}from'./flow.js';
 import{buildPairFlowEvent}from'./flowPair.js';
 import{cBluesRepeatReady,cBluesMutationReady,cBluesConnectReady,cBluesTradeReady,cBluesRecallReady,cBluesStageReady}from'./mastery.js';
+import{nextKeyTransferRequest}from'./keyMastery.js';
 import{keyTransferSupported,transposeHarmonyTimelineFromC}from'./keyTransfer.js';
 import{materializeScoreModel}from'./materialize.js';
 import{validateCurriculum}from'./validate.js';
@@ -61,9 +62,16 @@ function buildProgramSlots(form,eventCount){
  }
  return out;
 }
+function injectKeyTransferSlot(slots,request){
+ if(!request||!slots.length)return null;
+ const needed=fieldBeatsFor(variantBeats(request.variant));let index=-1;
+ for(let i=slots.length-1;i>=0;i--){if(fieldBeatsFor(variantBeats(slots[i].variant))>=needed){index=i;break;}}
+ if(index<0)index=Math.max(0,slots.length-2);
+ slots[index]=request;return index;
+}
 export function recommendedFormIdForStage14(familyMastery={},explicitFormId=null){return explicitFormId||(cBluesStageReady(familyMastery)?'rhythm-changes-32':'c-blues-12');}
 
-export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},harmonyFieldOverrides={},formId=null,flowActionOverride=null}={}){
+export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=20,targetSessionBeats=320,dueFamilyIds=[],weakFamilyIds=[],familyMastery={},keyProgress={},harmonyFieldOverrides={},formId=null,flowActionOverride=null}={}){
  validateCurriculum();
  if(!keyTransferSupported(key,currentStage))throw new Error(`key ${key} is not enabled for Stage ${currentStage}`);
  const resolvedFormId=currentStage>=14?recommendedFormIdForStage14(familyMastery,formId):null;
@@ -75,11 +83,12 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
  if(!families.length)throw new Error('no eligible phrase families');
  const formTargetBeats=musicalForm?Math.max(musicalForm.lengthBeats,Math.floor(targetSessionBeats/musicalForm.lengthBeats)*musicalForm.lengthBeats):targetSessionBeats;
  const slots=musicalForm?.slotPrograms?.length?buildProgramSlots(musicalForm,eventCount):buildSlots(families,eventCount,{familyMastery,dueFamilyIds,formIntegration:Boolean(musicalForm)});
+ const keyTransferRequest=key==='C'&&!musicalForm?nextKeyTransferRequest({keyProgress,familyMastery,currentStage}):null,keyTransferSlotIndex=injectKeyTransferSlot(slots,keyTransferRequest);
  const sessionForm=musicalForm?.formId||(currentStage>=9?'phrase-8':'training-4');
  const baseSeed={sessionId:`stage-${currentStage}-${Date.now()}`,stage:currentStage,bpm,key,sourceKey:'C',form:sessionForm,musicalFormId:musicalForm?.formId||null,formLengthBeats:musicalForm?.lengthBeats||null,beatsPerBar:4,countInBars:1};
  const events=[];let cursor=0;
  for(let i=0;i<slots.length;i++){
-  const {family,variant,mode,sequenceIndex,harmonyFieldId:sequenceHarmonyFieldId,tonalFieldId,harmonyTransfer,tonalFieldTransfer,formProgram}=slots[i],scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
+  const {family,variant,mode,sequenceIndex,harmonyFieldId:sequenceHarmonyFieldId,tonalFieldId,harmonyTransfer,tonalFieldTransfer,formProgram,key:slotKey=null,keyTransfer=false}=slots[i],eventKey=slotKey||key,scoreBeats=variantBeats(variant),fieldBeats=fieldBeatsFor(scoreBeats);
   if(cursor+fieldBeats>formTargetBeats&&events.length>=8)break;
   const startBeat=cursor,endBeat=startBeat+fieldBeats,isTeacher=mode==='TEACHER_CALL',isBuild=mode==='BUILD'&&variant.morphType!=='NONE';
   let singStartBeat;
@@ -97,16 +106,16 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   let harmonyField=null,harmonyFieldId=null,sourceHarmonyFieldId=null,sourceHarmonyContext=null,harmonyTimeline,harmonyContext;
   if(musicalForm){
     const sourceTimeline=sliceFormHarmony(musicalForm,singStartBeat,scoreBeats);sourceHarmonyContext=sourceTimeline[0]?.chord||'C';
-    harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,key);harmonyContext=harmonyTimeline[0]?.chord||key;
-    sourceHarmonyFieldId=`form:${musicalForm.formId}:${sourceHarmonyContext}`;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
+    harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,eventKey);harmonyContext=harmonyTimeline[0]?.chord||eventKey;
+    sourceHarmonyFieldId=`form:${musicalForm.formId}:${sourceHarmonyContext}`;harmonyFieldId=eventKey==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${eventKey}`;
   }else{
     const overrideId=harmonyFieldOverrides[variant.variantId]||harmonyFieldOverrides[family.familyId]||null;
     harmonyField=overrideId?harmonyFieldById(overrideId):sequenceHarmonyFieldId?harmonyFieldById(sequenceHarmonyFieldId):defaultHarmonyFieldFor(variant.allowedHarmony,{scoreBeats});
     if(!harmonyField)throw new Error(`${variant.variantId}: harmony field not found for ${scoreBeats} beats`);
     const sourceTimeline=harmonyField.timeline.map(x=>({...x}));
     if(sourceTimeline.some(x=>!variant.allowedHarmony.includes(x.chord)))throw new Error(`${variant.variantId}: harmony field ${harmonyField.harmonyFieldId} is outside allowed scope`);
-    sourceHarmonyContext=sourceTimeline[0]?.chord||'C';sourceHarmonyFieldId=harmonyField.harmonyFieldId;harmonyFieldId=key==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${key}`;
-    harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,key);harmonyContext=harmonyTimeline[0]?.chord||key;
+    sourceHarmonyContext=sourceTimeline[0]?.chord||'C';sourceHarmonyFieldId=harmonyField.harmonyFieldId;harmonyFieldId=eventKey==='C'?sourceHarmonyFieldId:`${sourceHarmonyFieldId}@key:${eventKey}`;
+    harmonyTimeline=transposeHarmonyTimelineFromC(sourceTimeline,eventKey);harmonyContext=harmonyTimeline[0]?.chord||eventKey;
   }
 
   const tonalField=tonalFieldId?tonalFieldById(tonalFieldId):null;
@@ -117,7 +126,7 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
   else if(isTeacher)prepareBeat=Math.min(startBeat+scoreBeats,singStartBeat);
   else prepareBeat=scoreBeats>4?startBeat:startBeat+4;
   const formPosition=musicalForm?Math.floor((((singStartBeat%musicalForm.lengthBeats)+musicalForm.lengthBeats)%musicalForm.lengthBeats)/4):0;
-  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key,sourceKey:'C',sourceHarmonyFieldId,sourceHarmonyContext,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
+  const event={eventId:`event-${String(events.length+1).padStart(2,'0')}`,familyId:family.familyId,variantId:variant.variantId,title:family.title,key:eventKey,sourceKey:'C',keyTransfer:Boolean(keyTransfer),sourceHarmonyFieldId,sourceHarmonyContext,harmonyFieldId,harmonyContext,harmonyTimeline,tonalFieldId:tonalField?.tonalFieldId||null,harmonyTransfer:musicalForm?true:harmonyTransfer,tonalFieldTransfer,formTransfer:Boolean(musicalForm),movePolicy:formProgram?.movePolicy||'NONE',contextSequenceIndex:sequenceIndex,form:musicalForm?.formId||fieldNameFor(fieldBeats),fieldBeats,formPosition,startBeat,prepareBeat,singStartBeat,singEndBeat,endBeat,presentationMode:mode,modelPolicy:isTeacher?'TEACHER_CALL':'NONE',morphPolicy:isBuild?variant.morphType:'NONE',scoringPolicy:'READING'};
   if(isTeacher){event.modelStartBeat=startBeat;event.modelEndBeat=startBeat+scoreBeats;}
   if(isBuild)event.morph={active:true,type:variant.morphType,indices:[...(variant.morphTargets||[])],parentVariantId:variant.parentVariant||null};
   event.scoreModel=materializeScoreModel(variant,event,baseSeed);
@@ -154,5 +163,5 @@ export function buildDailySessionPlan({currentStage=0,key='C',bpm=60,eventCount=
    }
  }
  const totalBeats=cursor,totalBars=totalBeats/4,formHarmonyTimeline=musicalForm?transposeHarmonyTimelineFromC(expandFormHarmony(musicalForm,totalBeats),key):null;
- return{...baseSeed,totalBars,totalBeats,targetSessionBeats:formTargetBeats,requestedEventCount:eventCount,events,focusFamilyIds:families.map(f=>f.familyId),formHarmonyTimeline};
+ return{...baseSeed,totalBars,totalBeats,targetSessionBeats:formTargetBeats,requestedEventCount:eventCount,events,focusFamilyIds:families.map(f=>f.familyId),keyTransferEventId:keyTransferSlotIndex==null?null:events.find(e=>e.keyTransfer)?.eventId||null,formHarmonyTimeline};
 }
