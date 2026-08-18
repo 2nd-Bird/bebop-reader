@@ -1,4 +1,5 @@
 import{PHRASE_FAMILIES}from'./phraseFamilies.js';import{VARIANTS,variantById}from'./variants.js';import{stageByNumber}from'./stages.js';import{defaultHarmonyFieldFor}from'./harmonyFields.js';
+const variantBeats=v=>Math.max(4,...(v.notes||[]).map(n=>n.startBeat+n.duration));
 export function validateCurriculum(){
  const famIds=new Set();
  for(const f of PHRASE_FAMILIES){
@@ -15,7 +16,7 @@ export function validateCurriculum(){
    if(!Array.isArray(v.structuralTargetIndices)||!v.structuralTargetIndices.length)throw new Error(`${v.variantId}: structuralTargetIndices must be a non-empty array`);
    for(const i of v.structuralTargetIndices){if(!Number.isInteger(i)||!v.notes[i]||v.notes[i].rest)throw new Error(`${v.variantId}: invalid structural target index ${i}`);}
   }
-  const field=defaultHarmonyFieldFor(v.allowedHarmony);if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')}`);
+  const scoreBeats=variantBeats(v),field=defaultHarmonyFieldFor(v.allowedHarmony,{scoreBeats});if(!field)throw new Error(`${v.variantId}: no compatible default harmony field for ${v.allowedHarmony.join(',')} at ${scoreBeats} beats`);
  }
  return true;
 }
